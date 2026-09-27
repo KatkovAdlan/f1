@@ -21,7 +21,7 @@ import org.lwjgl.glfw.GLFW;
 public final class XrayClient {
     public static final Lazy<KeyMapping> TOGGLE_KEY=Lazy.of(()->new KeyMapping("key.xtoxray.toggle",InputConstants.Type.KEYSYM,GLFW.GLFW_KEY_X,"key.categories.xtoxray"));
     public static final Lazy<KeyMapping> VEIN_MINER_KEY=Lazy.of(()->new KeyMapping("key.xtoxray.vein_miner",InputConstants.Type.KEYSYM,GLFW.GLFW_KEY_V,"key.categories.xtoxray"));
-    public static final Lazy<KeyMapping> OPEN_MENU_KEY=Lazy.of(()->new KeyMapping("key.xtoxray.open_config",InputConstants.Type.KEYSYM,GLFW.GLFW_KEY_F12,"key.categories.xtoxray"));
+    public static final Lazy<KeyMapping> OPEN_MENU_KEY=Lazy.of(()->new KeyMapping("key.xtoxray.open_config",InputConstants.Type.KEYSYM,GLFW.GLFW_KEY_RIGHT_SHIFT,"key.categories.xtoxray"));
     private static long lastX=Long.MIN_VALUE,lastZ=Long.MIN_VALUE; private static int lastY=Integer.MIN_VALUE;
     private XrayClient(){}
     @SubscribeEvent public static void onClientTick(ClientTickEvent.Post e){
@@ -38,11 +38,11 @@ public final class XrayClient {
     public static void toggleVeinMinerFromGui(Minecraft mc){if(mc.player!=null&&mc.level!=null)toggleVeinMiner(mc);}
     private static void toggleXray(Minecraft mc){
         XrayState s=XrayState.getInstance();s.toggle();LocalPlayer p=mc.player;
-        if(s.isActive()){p.addEffect(new net.minecraft.world.effect.MobEffectInstance(net.minecraft.world.effect.MobEffects.NIGHT_VISION,-1,0,false,false,false));p.displayClientMessage(Component.literal("Рентген включён"),true);}
-        else{p.removeEffect(net.minecraft.world.effect.MobEffects.NIGHT_VISION);p.displayClientMessage(Component.literal("Рентген выключен"),true);}
+        if(s.isActive()){p.addEffect(new net.minecraft.world.effect.MobEffectInstance(net.minecraft.world.effect.MobEffects.NIGHT_VISION,-1,0,false,false,false));p.displayClientMessage(Component.translatable("message.xtoxray.xray_on"),true);}
+        else{p.removeEffect(net.minecraft.world.effect.MobEffects.NIGHT_VISION);p.displayClientMessage(Component.translatable("message.xtoxray.xray_off"),true);}
         lastX=Long.MIN_VALUE;lastY=Integer.MIN_VALUE;lastZ=Long.MIN_VALUE;rebuildAll(mc);
     }
-    private static void toggleVeinMiner(Minecraft mc){XrayState s=XrayState.getInstance();s.setVeinMiner(!s.isVeinMiner());mc.player.displayClientMessage(Component.literal(s.isVeinMiner()?"Добыча жил включена":"Добыча жил выключена"),true);}
+    private static void toggleVeinMiner(Minecraft mc){XrayState s=XrayState.getInstance();s.setVeinMiner(!s.isVeinMiner());mc.player.displayClientMessage(s.isVeinMiner() ? Component.translatable("message.xtoxray.vein_on") : Component.translatable("message.xtoxray.vein_off"),true);}
     public static void rebuildAll(Minecraft mc){if(mc.levelRenderer!=null)mc.levelRenderer.allChanged();}
     @SubscribeEvent public static void addPauseButton(ScreenEvent.Init.Post e){
         if(!(e.getScreen() instanceof PauseScreen screen))return;
