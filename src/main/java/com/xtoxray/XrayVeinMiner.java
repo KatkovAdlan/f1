@@ -35,7 +35,7 @@ public final class XrayVeinMiner {
         }
 
         XrayState state = XrayState.getInstance();
-        if (!state.isVeinMiner() || !state.isWhitelisted(event.getState().getBlock())) {
+        if (!state.isVeinMiner() || !state.isVeinMinerWhitelisted(event.getState().getBlock())) {
             return;
         }
         if (event.getBreaker() instanceof ServerPlayer player) {
