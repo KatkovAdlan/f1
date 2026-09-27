@@ -225,7 +225,14 @@ public final class XrayConfigScreen extends Screen {
             List<Block> blocks=getFilteredWhitelist();
             for(int i=0;i<Math.min(blocks.size(),max);i++){
                 int bx=x+(i%cols)*(cell+gap), by=y+(i/cols)*(cell+gap);
-                if(mx>=bx&&mx<bx+cell&&my>=by&&my<by+cell){state.removeBlock(blocks.get(i));return true;}
+                if(mx>=bx&&mx<bx+cell&&my>=by&&my<by+cell){
+                    if (page == Page.VEIN) {
+                        state.removeVeinMinerBlock(blocks.get(i));
+                    } else {
+                        state.removeXrayBlock(blocks.get(i));
+                    }
+                    return true;
+                }
             }
             int ai=Math.min(blocks.size(),max), ax=x+(ai%cols)*(cell+gap), ay=y+(ai/cols)*(cell+gap);
             if(mx>=ax&&mx<ax+cell&&my>=ay&&my<ay+cell){
