@@ -14,6 +14,7 @@ import java.io.Writer;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
@@ -173,6 +174,15 @@ public final class XrayState {
             whitelist.clear();
             save();
         }
+    }
+
+    public List<Block> getWhitelistSorted() {
+        List<Block> result = new ArrayList<>(whitelist);
+        result.sort(Comparator.comparing(block -> {
+            ResourceLocation id = BuiltInRegistries.BLOCK.getKey(block);
+            return id == null ? block.getName().getString() : id.toString();
+        }, String.CASE_INSENSITIVE_ORDER));
+        return result;
     }
 
     public List<Block> getWhitelistInOrder() {
