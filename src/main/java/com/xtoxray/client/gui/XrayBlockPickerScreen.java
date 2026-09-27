@@ -82,9 +82,11 @@ public final class XrayBlockPickerScreen extends Screen {
         return super.mouseClicked(mx,my,button);
     }
 
-    @Override public boolean mouseScrolled(double mx,double my,double delta){
+    @Override public boolean mouseScrolled(double mx,double my,double scrollX,double scrollY){
         int rows=(filtered.size()+COLS-1)/COLS,max=Math.max(0,rows-ROWS);
-        scroll=Math.max(0,Math.min(scroll-(int)Math.signum(delta),max));
+        if(scrollY != 0){
+            scroll=Math.max(0,Math.min(scroll-(int)Math.signum(scrollY),max));
+        }
         return true;
     }
 
