@@ -11,28 +11,33 @@ import org.spongepowered.asm.mixin.injection.Coerce;
 import org.spongepowered.asm.mixin.injection.Redirect;
 
 /**
- * Совместимость с Embeddium 1.21.1.
+ * Совместимость с Sodium 0.8.13 для Minecraft 1.21.1.
  *
- * Embeddium использует собственный WorldSlice при построении мешей чанков
- * и поэтому не проходит через vanilla RenderChunkRegion.
+ * Sodium строит меши чанков через собственный LevelSlice, поэтому
+ * vanilla RenderChunkRegion здесь не участвует.
  */
-@Mixin(targets = "org.embeddedt.embeddium.impl.render.chunk.compile.tasks.ChunkBuilderMeshingTask")
-public abstract class MixinEmbeddiumChunkBuilderMeshingTask {
+@Mixin(
+    targets = "net.caffeinemc.mods.sodium.client.render.chunk.compile.tasks.ChunkBuilderMeshingTask",
+    remap = false
+)
+public abstract class MixinSodiumChunkBuilderMeshingTask {
 
     @Redirect(
         method = "execute",
         at = @At(
             value = "INVOKE",
-            target = "Lorg/embeddedt/embeddium/impl/world/WorldSlice;getBlockState(III)Lnet/minecraft/world/level/block/state/BlockState;"
-        )
+            target = "Lnet/caffeinemc/mods/sodium/client/world/LevelSlice;getBlockState(III)Lnet/minecraft/world/level/block/state/BlockState;",
+            remap = false
+        ),
+        remap = false
     )
-    private BlockState xtoxray$filterWorldSlice(
-            @Coerce Object worldSlice,
+    private BlockState xtoxray$filterLevelSlice(
+            @Coerce Object levelSlice,
             int x,
             int y,
             int z
     ) {
-        BlockState state = ((BlockAndTintGetter) worldSlice).getBlockState(new BlockPos(x, y, z));
+        BlockState state = ((BlockAndTintGetter) levelSlice).getBlockState(new BlockPos(x, y, z));
         XrayState xray = XrayState.getInstance();
 
         if (!xray.isActive() || state.isAir()) {
@@ -45,19 +50,16 @@ public abstract class MixinEmbeddiumChunkBuilderMeshingTask {
 
         int distance = xray.getOreRenderDistance();
         if (distance > 0) {
-            double dx = x;
-            double dy = y;
-            double dz = z;
+            int cx = xray.getRenderCenterX();
+            int cy = xray.getRenderCenterY();
+            int cz = xray.getRenderCenterZ();
 
-            net.minecraft.client.Minecraft minecraft = net.minecraft.client.Minecraft.getInstance();
-            if (minecraft.player != null) {
-                double distanceSquared = minecraft.player.blockPosition().distSqr(
-                    new BlockPos((int) dx, (int) dy, (int) dz)
-                );
+            long dx = (long) x - cx;
+            long dy = (long) y - cy;
+            long dz = (long) z - cz;
 
-                if (distanceSquared > (double) distance * distance) {
-                    return Blocks.AIR.defaultBlockState();
-                }
+            if (dx * dx + dy * dy + dz * dz > (long) distance * distance) {
+                return Blocks.AIR.defaultBlockState();
             }
         }
 
