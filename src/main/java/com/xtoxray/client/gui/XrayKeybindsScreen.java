@@ -21,31 +21,41 @@ public final class XrayKeybindsScreen extends Screen {
 
     @Override
     protected void init() {
-        int left = width / 2 - 150;
-        int top = 62;
+        int left = width / 2 - 155;
+        int top = 72;
+
         addKeyRow(left, top, "X-Ray", XrayClient.TOGGLE_KEY.get(), 0);
-        addKeyRow(left, top + 52, "VeinMiner", XrayClient.VEIN_MINER_KEY.get(), 1);
+        addKeyRow(left, top + 48, "VeinMiner", XrayClient.VEIN_MINER_KEY.get(), 1);
 
         addRenderableWidget(Button.builder(Component.literal("Сбросить клавиши"), b -> {
             reset(XrayClient.TOGGLE_KEY.get());
             reset(XrayClient.VEIN_MINER_KEY.get());
-        }).bounds(left, top + 116, 145, 20).build());
+            listening = -1;
+            rebuild();
+        }).bounds(left, top + 104, 150, 20).build());
 
         addRenderableWidget(Button.builder(Component.literal("Назад"), b -> onClose())
-            .bounds(left + 155, top + 116, 145, 20).build());
+            .bounds(left + 160, top + 104, 150, 20).build());
     }
 
     private void addKeyRow(int x, int y, String name, KeyMapping mapping, int index) {
-        addRenderableWidget(Button.builder(Component.literal(name), b -> beginListening(index))
-            .bounds(x, y, 145, 20).build());
-        addRenderableWidget(Button.builder(
-            listening == index ? Component.literal("Нажмите клавишу...") : mapping.getTranslatedKeyMessage(),
-            b -> beginListening(index)
-        ).bounds(x + 155, y, 145, 20).build());
+        addRenderableWidget(Button.builder(Component.literal(name), b -> begin(index))
+            .bounds(x, y, 150, 20).build());
+
+        Component key = listening == index
+            ? Component.literal("Нажмите клавишу...")
+            : mapping.getTranslatedKeyMessage();
+
+        addRenderableWidget(Button.builder(key, b -> begin(index))
+            .bounds(x + 160, y, 150, 20).build());
     }
 
-    private void beginListening(int index) {
+    private void begin(int index) {
         listening = index;
+        rebuild();
+    }
+
+    private void rebuild() {
         clearWidgets();
         init();
     }
@@ -59,15 +69,13 @@ public final class XrayKeybindsScreen extends Screen {
         KeyMapping.resetMapping();
         Minecraft.getInstance().options.save();
         listening = -1;
-        clearWidgets();
-        init();
+        rebuild();
     }
 
     private void reset(KeyMapping mapping) {
         mapping.setKey(mapping.getDefaultKey());
         KeyMapping.resetMapping();
         Minecraft.getInstance().options.save();
-        listening = -1;
     }
 
     @Override
@@ -75,8 +83,7 @@ public final class XrayKeybindsScreen extends Screen {
         if (listening >= 0) {
             if (keyCode == GLFW.GLFW_KEY_ESCAPE) {
                 listening = -1;
-                clearWidgets();
-                init();
+                rebuild();
                 return true;
             }
             if (keyCode == GLFW.GLFW_KEY_BACKSPACE) {
@@ -101,8 +108,27 @@ public final class XrayKeybindsScreen extends Screen {
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
         renderBackground(graphics, mouseX, mouseY, partialTick);
-        graphics.drawCenteredString(font, title, width / 2, 18, 0xFFFFFF);
-        graphics.drawCenteredString(font, Component.literal("Клавиши действий X to Xray"), width / 2, 34, 0xAAAAAA);
+
+        int left = width / 2 - 165;
+        int top = 42;
+        int right = left + 330;
+        int bottom = 208;
+
+        graphics.fill(left - 4, top - 4, right + 4, bottom + 4, 0xCC080808);
+        graphics.fill(left, top, right, bottom, 0xE41B1B1B);
+        graphics.hLine(left, right, top, 0xFF6A6A6A);
+        graphics.hLine(left, right, bottom, 0xFF000000);
+        graphics.vLine(left, top, bottom, 0xFF6A6A6A);
+        graphics.vLine(right, top, bottom, 0xFF000000);
+
+        graphics.drawCenteredString(font, title, width / 2, top + 9, 0xFFFFFF);
+        graphics.drawCenteredString(font, Component.literal("Клавиши управления X to Xray"),
+            width / 2, top + 25, 0xAAAAAA);
+
+        graphics.drawString(font,
+            Component.literal("Нажмите на поле справа и затем нужную клавишу"),
+            left + 10, bottom - 18, 0x888888, false);
+
         super.render(graphics, mouseX, mouseY, partialTick);
     }
 
