@@ -56,7 +56,8 @@ public final class XrayBlockPickerScreen extends Screen {
     }
 
     @Override public void render(GuiGraphics g,int mx,int my,float pt){
-        renderBackground(g,mx,my,pt);
+        renderBlurredBackground(pt);
+        g.fill(0, 0, width, height, 0x66000000);
         int left=(width-PANEL_W)/2,top=Math.max(6,(height-PANEL_H)/2);
         int right=left+PANEL_W,bottom=top+PANEL_H;
         g.fill(left-3,top-3,right+3,bottom+3,0x99000000);
