@@ -24,6 +24,7 @@ public final class XrayConfigScreen extends Screen {
     private int left, top, panelW, panelH;
     private int listening = -1;
     private EditBox whitelistSearch;
+    private int originalBlur = -1;
 
     public XrayConfigScreen(Screen parent) {
         super(Component.literal("XtoXray"));
@@ -31,6 +32,11 @@ public final class XrayConfigScreen extends Screen {
     }
 
     @Override protected void init() {
+        if (originalBlur < 0) {
+            originalBlur = Minecraft.getInstance().options.getMenuBackgroundBlurrinessValue();
+        }
+        Minecraft.getInstance().options.getMenuBackgroundBlurriness().set(10);
+
         panelW = Math.min(PANEL_W, width - 12);
         panelH = Math.min(PANEL_H, height - 12);
         left = (width - panelW) / 2;
@@ -164,7 +170,6 @@ public final class XrayConfigScreen extends Screen {
     private void drawVein(GuiGraphics g,int mx,int my) {
         int x=contentLeft(), w=Math.min(258,contentWidth());
         drawToggle(g,x,top+49,w,state.isVeinMiner(),"Добыча жил",0xFF4A1F1E);
-        g.drawString(font,Component.literal("Прочность инструмента"),x,top+115,0xFFFFFFFF,false);
         g.drawString(font,Component.literal("Белый список"),x,top+147,0xFFFFFFFF,false);
         String count = getFilteredWhitelist().size() + " из " + getWhitelistSize();
         g.drawString(font,Component.literal(count),x+contentWidth()-font.width(count),top+148,0xFF888888,false);
@@ -264,7 +269,14 @@ public final class XrayConfigScreen extends Screen {
         m.setKey(key); KeyMapping.resetMapping(); Minecraft.getInstance().options.save(); listening=-1; init();
     }
 
-    @Override public void onClose(){Minecraft.getInstance().setScreen(parent);}
+    @Override public void onClose(){
+        if (originalBlur >= 0) {
+            Minecraft.getInstance().options.getMenuBackgroundBlurriness().set(originalBlur);
+            Minecraft.getInstance().options.save();
+            originalBlur = -1;
+        }
+        Minecraft.getInstance().setScreen(parent);
+    }
 
     private static final class DistanceSlider extends AbstractSliderButton {
         DistanceSlider(int x,int y,int w,int h,int d){super(x,y,w,h,Component.empty(),(d-32)/480.0D);updateMessage();}
