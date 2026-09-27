@@ -1,6 +1,5 @@
 package com.xtoxray.client.mixin;
 
-import com.mojang.blaze3d.vertex.PoseStack;
 import com.xtoxray.XrayState;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.BlockAndTintGetter;
@@ -12,33 +11,28 @@ import org.spongepowered.asm.mixin.injection.Coerce;
 import org.spongepowered.asm.mixin.injection.Redirect;
 
 /**
- * Совместимость с Sodium 0.8.13 для Minecraft 1.21.1.
+ * Совместимость с Embeddium 1.21.1.
  *
- * Sodium строит меши чанков через собственный LevelSlice, поэтому
- * vanilla RenderChunkRegion здесь не участвует.
+ * Embeddium использует собственный WorldSlice при построении мешей чанков
+ * и поэтому не проходит через vanilla RenderChunkRegion.
  */
-@Mixin(
-    targets = "net.caffeinemc.mods.sodium.client.render.chunk.compile.tasks.ChunkBuilderMeshingTask",
-    remap = false
-)
-public abstract class MixinSodiumChunkBuilderMeshingTask {
+@Mixin(targets = "org.embeddedt.embeddium.impl.render.chunk.compile.tasks.ChunkBuilderMeshingTask")
+public abstract class MixinEmbeddiumChunkBuilderMeshingTask {
 
     @Redirect(
         method = "execute",
         at = @At(
             value = "INVOKE",
-            target = "Lnet/caffeinemc/mods/sodium/client/world/LevelSlice;getBlockState(III)Lnet/minecraft/world/level/block/state/BlockState;",
-            remap = false
-        ),
-        remap = false
+            target = "Lorg/embeddedt/embeddium/impl/world/WorldSlice;getBlockState(III)Lnet/minecraft/world/level/block/state/BlockState;"
+        )
     )
-    private BlockState xtoxray$filterLevelSlice(
-            @Coerce Object levelSlice,
+    private BlockState xtoxray$filterWorldSlice(
+            @Coerce Object worldSlice,
             int x,
             int y,
             int z
     ) {
-        BlockState state = ((BlockAndTintGetter) levelSlice).getBlockState(new BlockPos(x, y, z));
+        BlockState state = ((BlockAndTintGetter) worldSlice).getBlockState(new BlockPos(x, y, z));
         XrayState xray = XrayState.getInstance();
 
         if (!xray.isActive() || state.isAir()) {
@@ -51,16 +45,19 @@ public abstract class MixinSodiumChunkBuilderMeshingTask {
 
         int distance = xray.getOreRenderDistance();
         if (distance > 0) {
-            int cx = xray.getRenderCenterX();
-            int cy = xray.getRenderCenterY();
-            int cz = xray.getRenderCenterZ();
+            double dx = x;
+            double dy = y;
+            double dz = z;
 
-            long dx = (long) x - cx;
-            long dy = (long) y - cy;
-            long dz = (long) z - cz;
+            net.minecraft.client.Minecraft minecraft = net.minecraft.client.Minecraft.getInstance();
+            if (minecraft.player != null) {
+                double distanceSquared = minecraft.player.blockPosition().distSqr(
+                    new BlockPos((int) dx, (int) dy, (int) dz)
+                );
 
-            if (dx * dx + dy * dy + dz * dz > (long) distance * distance) {
-                return Blocks.AIR.defaultBlockState();
+                if (distanceSquared > (double) distance * distance) {
+                    return Blocks.AIR.defaultBlockState();
+                }
             }
         }
 
