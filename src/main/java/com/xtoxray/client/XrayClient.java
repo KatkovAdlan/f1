@@ -10,9 +10,11 @@ import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.PauseScreen;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.network.chat.Component;
+import net.minecraft.world.entity.Mob;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
+import net.neoforged.neoforge.client.event.RenderLivingEvent;
 import net.neoforged.neoforge.client.event.ScreenEvent;
 import net.neoforged.neoforge.common.util.Lazy;
 import org.lwjgl.glfw.GLFW;
@@ -38,16 +40,32 @@ public final class XrayClient {
             if(x!=lastX||y!=lastY||z!=lastZ){lastX=x;lastY=y;lastZ=z;rebuildAll(mc);}
         }
     }
+
     public static void toggleXrayFromGui(Minecraft mc){if(mc.player!=null&&mc.level!=null)toggleXray(mc);}
     public static void toggleVeinMinerFromGui(Minecraft mc){if(mc.player!=null&&mc.level!=null)toggleVeinMiner(mc);}
+
     private static void toggleXray(Minecraft mc){
         XrayState s=XrayState.getInstance();s.toggle();LocalPlayer p=mc.player;
         if(s.isActive()){p.addEffect(new net.minecraft.world.effect.MobEffectInstance(net.minecraft.world.effect.MobEffects.NIGHT_VISION,-1,0,false,false,false));p.displayClientMessage(Component.translatable("message.xtoxray.xray_on"),true);}
         else{p.removeEffect(net.minecraft.world.effect.MobEffects.NIGHT_VISION);p.displayClientMessage(Component.translatable("message.xtoxray.xray_off"),true);}
         lastX=Long.MIN_VALUE;lastY=Integer.MIN_VALUE;lastZ=Long.MIN_VALUE;rebuildAll(mc);
     }
+
     private static void toggleVeinMiner(Minecraft mc){XrayState s=XrayState.getInstance();s.setVeinMiner(!s.isVeinMiner());mc.player.displayClientMessage(s.isVeinMiner() ? Component.translatable("message.xtoxray.vein_on") : Component.translatable("message.xtoxray.vein_off"),true);}
+
+    /**
+     * Убираем обычных мобов из рендера во время рентгена.
+     * Игроки остаются видимыми.
+     */
+    @SubscribeEvent
+    public static void hideMobs(RenderLivingEvent.Pre<?, ?> event) {
+        if (XrayState.getInstance().isActive() && event.getEntity() instanceof Mob) {
+            event.setCanceled(true);
+        }
+    }
+
     public static void rebuildAll(Minecraft mc){if(mc.levelRenderer!=null)mc.levelRenderer.allChanged();}
+
     @SubscribeEvent public static void addPauseButton(ScreenEvent.Init.Post e){
         if(!(e.getScreen() instanceof PauseScreen screen))return;
 
@@ -57,8 +75,6 @@ public final class XrayClient {
         int height=20;
         int x=screenWidth/2-width/2;
 
-        // Не привязываемся к конкретной кнопке. Берём самую нижнюю существующую кнопку.
-        // Поэтому сторонние моды, добавляющие новые кнопки ниже, автоматически сдвигают X to Xray.
         int maxBottom=0;
         for(var child:screen.children()){
             if(child instanceof Button button){
@@ -68,8 +84,6 @@ public final class XrayClient {
 
         int y=maxBottom+4;
 
-        // На обычном экране места достаточно. Если меню необычно переполнено,
-        // не допускаем выход нашей кнопки за нижнюю границу.
         if(y+height>screenHeight-4){
             y=screenHeight-height-4;
         }
