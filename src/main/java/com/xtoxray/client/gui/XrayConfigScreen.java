@@ -114,7 +114,7 @@ public final class XrayConfigScreen extends Screen {
 
     private void drawHeader(GuiGraphics g) {
         g.drawString(font, Component.literal("XtoXray"), left+12, top+12, 0xFFFFFFFF, false);
-        String version="Порт NeoForge 1.0.0-neoforge.7";
+        String version="Порт NeoForge 1.0.0-neoforge.9";
         g.drawString(font, Component.literal(version), left+panelW-font.width(version)-12, top+12, 0xFF4EE0B3, false);
     }
 
