@@ -4,6 +4,8 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.state.BlockState;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.neoforge.common.NeoForge;
@@ -77,16 +79,40 @@ public final class XrayVeinMiner {
         BREAKING_VEIN.set(true);
         try {
             int broken = 0;
+            int durabilityPerBlock = XrayState.getInstance().getVeinMinerDurabilityPerBlock();
+            ItemStack tool = player.getMainHandItem();
+
             for (BlockPos pos : visited) {
-                if (pos.equals(start)) {
+                if (pos.equals(start) || broken >= maxBlocks - 1) {
                     continue;
                 }
-                if (broken >= maxBlocks - 1) {
+
+                if (!level.getBlockState(pos).is(block)) {
+                    continue;
+                }
+
+                if (!player.isCreative() && tool.isEmpty()) {
                     break;
                 }
-                if (level.getBlockState(pos).is(block)) {
-                    level.destroyBlock(pos, true, player);
-                    broken++;
+
+                boolean destroyed = level.destroyBlock(pos, true, player);
+                if (!destroyed) {
+                    continue;
+                }
+
+                broken++;
+
+                if (!player.isCreative() && tool.isDamageableItem()) {
+                    if (tool.nextDamageWillBreak()) {
+                        tool.hurtAndBreak(1, player, EquipmentSlot.MAINHAND);
+                        break;
+                    }
+
+                    tool.hurtAndBreak(durabilityPerBlock, player, EquipmentSlot.MAINHAND);
+
+                    if (tool.isEmpty()) {
+                        break;
+                    }
                 }
             }
         } finally {
