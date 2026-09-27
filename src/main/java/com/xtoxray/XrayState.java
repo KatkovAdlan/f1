@@ -14,7 +14,8 @@ import java.io.Writer;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.HashSet;
+import java.util.Comparator;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -26,9 +27,7 @@ public final class XrayState {
     private boolean active;
     private boolean veinMiner;
     private int oreRenderDistance = 128;
-    private boolean customPackEnabled;
-    private String customPackPath = "";
-    private final Set<Block> whitelist = new HashSet<>();
+    private final Set<Block> whitelist = new LinkedHashSet<>();
 
     private XrayState() {
     }
@@ -41,23 +40,19 @@ public final class XrayState {
         try {
             Files.createDirectories(CONFIG_PATH.getParent());
             if (!Files.exists(CONFIG_PATH)) {
-                initDefaults();
-                save();
+                resetDefaults();
                 return;
             }
 
             try (Reader reader = Files.newBufferedReader(CONFIG_PATH)) {
                 ConfigData data = GSON.fromJson(reader, ConfigData.class);
                 if (data == null) {
-                    initDefaults();
-                    save();
+                    resetDefaults();
                     return;
                 }
 
-                oreRenderDistance = clamp(data.oreRenderDistance, 0, 512);
+                oreRenderDistance = clamp(data.oreRenderDistance, 32, 512);
                 veinMiner = data.veinMiner;
-                customPackEnabled = data.customPackEnabled;
-                customPackPath = data.customPackPath == null ? "" : data.customPackPath;
 
                 whitelist.clear();
                 if (data.whitelist != null) {
@@ -70,29 +65,31 @@ public final class XrayState {
                 }
 
                 if (whitelist.isEmpty()) {
-                    initDefaults();
+                    addDefaultBlocks();
+                    save();
                 }
             }
         } catch (Exception ignored) {
-            initDefaults();
+            resetDefaults();
         }
     }
 
     public void save() {
         try {
             Files.createDirectories(CONFIG_PATH.getParent());
+
             ConfigData data = new ConfigData();
             data.oreRenderDistance = oreRenderDistance;
             data.veinMiner = veinMiner;
-            data.customPackEnabled = customPackEnabled;
-            data.customPackPath = customPackPath;
             data.whitelist = new ArrayList<>();
+
             for (Block block : whitelist) {
                 ResourceLocation key = BuiltInRegistries.BLOCK.getKey(block);
                 if (key != null) {
                     data.whitelist.add(key.toString());
                 }
             }
+
             try (Writer writer = Files.newBufferedWriter(CONFIG_PATH)) {
                 GSON.toJson(data, writer);
             }
@@ -100,8 +97,15 @@ public final class XrayState {
         }
     }
 
-    private void initDefaults() {
+    public void resetDefaults() {
         whitelist.clear();
+        addDefaultBlocks();
+        oreRenderDistance = 128;
+        veinMiner = false;
+        save();
+    }
+
+    private void addDefaultBlocks() {
         whitelist.add(Blocks.COAL_ORE);
         whitelist.add(Blocks.DEEPSLATE_COAL_ORE);
         whitelist.add(Blocks.IRON_ORE);
@@ -150,8 +154,35 @@ public final class XrayState {
         save();
     }
 
-    public Set<Block> getWhitelist() {
-        return whitelist;
+    public void addBlock(Block block) {
+        if (block != Blocks.AIR) {
+            whitelist.add(block);
+            save();
+        }
+    }
+
+    public void removeBlock(Block block) {
+        if (whitelist.remove(block)) {
+            save();
+        }
+    }
+
+    public void clearBlocks() {
+        whitelist.clear();
+        save();
+    }
+
+    public List<Block> getWhitelistSorted() {
+        List<Block> result = new ArrayList<>(whitelist);
+        result.sort(Comparator.comparing(
+            block -> block.getName().getString(),
+            String.CASE_INSENSITIVE_ORDER
+        ));
+        return result;
+    }
+
+    public int getWhitelistSize() {
+        return whitelist.size();
     }
 
     public boolean isVeinMiner() {
@@ -168,25 +199,7 @@ public final class XrayState {
     }
 
     public void setOreRenderDistance(int oreRenderDistance) {
-        this.oreRenderDistance = clamp(oreRenderDistance, 0, 512);
-        save();
-    }
-
-    public boolean isCustomPackEnabled() {
-        return customPackEnabled;
-    }
-
-    public void setCustomPackEnabled(boolean customPackEnabled) {
-        this.customPackEnabled = customPackEnabled;
-        save();
-    }
-
-    public String getCustomPackPath() {
-        return customPackPath;
-    }
-
-    public void setCustomPackPath(String customPackPath) {
-        this.customPackPath = customPackPath == null ? "" : customPackPath;
+        this.oreRenderDistance = clamp(oreRenderDistance, 32, 512);
         save();
     }
 
@@ -197,8 +210,6 @@ public final class XrayState {
     private static final class ConfigData {
         int oreRenderDistance = 128;
         boolean veinMiner;
-        boolean customPackEnabled;
-        String customPackPath = "";
         List<String> whitelist = new ArrayList<>();
     }
 }
