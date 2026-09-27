@@ -26,6 +26,7 @@ public final class XrayBlockPickerScreen extends Screen {
     private int scroll;
     private String status = "";
     private long statusUntil;
+    private int originalBlur = -1;
 
     public XrayBlockPickerScreen(Screen parent, boolean veinMinerMode){
         super(Component.literal(veinMinerMode ? "Добавить блок в Добычу жил" : "Добавить блок в Рентген"));
@@ -34,6 +35,11 @@ public final class XrayBlockPickerScreen extends Screen {
     }
 
     @Override protected void init(){
+        if (originalBlur < 0) {
+            originalBlur = Minecraft.getInstance().options.menuBackgroundBlurriness().get();
+        }
+        Minecraft.getInstance().options.menuBackgroundBlurriness().set(0);
+
         int panelTop = Math.max(6, (height-PANEL_H)/2);
 
         all.clear();
@@ -144,6 +150,14 @@ public final class XrayBlockPickerScreen extends Screen {
     @Override public boolean keyPressed(int keyCode,int scanCode,int modifiers){
         if(keyCode==org.lwjgl.glfw.GLFW.GLFW_KEY_ESCAPE){onClose();return true;}
         return super.keyPressed(keyCode,scanCode,modifiers);
+    }
+
+    @Override public void removed(){
+        if (originalBlur >= 0) {
+            Minecraft.getInstance().options.menuBackgroundBlurriness().set(originalBlur);
+            originalBlur = -1;
+        }
+        super.removed();
     }
 
     @Override public void onClose(){
