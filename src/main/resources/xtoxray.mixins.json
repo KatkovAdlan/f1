@@ -4,6 +4,7 @@
   "package": "com.xtoxray.client.mixin",
   "compatibilityLevel": "JAVA_21",
   "client": [
-    "MixinRenderChunkRegion"
+    "MixinRenderChunkRegion",
+    "MixinGameRenderer"
   ]
 }
