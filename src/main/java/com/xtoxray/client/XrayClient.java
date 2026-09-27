@@ -29,6 +29,10 @@ public final class XrayClient {
         while(OPEN_MENU_KEY.get().consumeClick())if(mc.level!=null&&mc.player!=null&&mc.screen==null)mc.setScreen(new XrayConfigScreen(null));
         while(TOGGLE_KEY.get().consumeClick())if(mc.level!=null&&mc.player!=null&&mc.screen==null)toggleXray(mc);
         while(VEIN_MINER_KEY.get().consumeClick())if(mc.level!=null&&mc.player!=null&&mc.screen==null)toggleVeinMiner(mc);
+        if(mc.level!=null&&mc.player!=null){
+            XrayState.getInstance().updateRenderCenter(mc.player.blockPosition());
+        }
+
         if(XrayState.getInstance().isActive()&&mc.level!=null&&mc.player!=null){
             long x=mc.player.blockPosition().getX()>>4;int y=mc.player.blockPosition().getY()>>4;long z=mc.player.blockPosition().getZ()>>4;
             if(x!=lastX||y!=lastY||z!=lastZ){lastX=x;lastY=y;lastZ=z;rebuildAll(mc);}
