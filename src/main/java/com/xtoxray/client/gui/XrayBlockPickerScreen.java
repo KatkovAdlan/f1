@@ -41,10 +41,6 @@ public final class XrayBlockPickerScreen extends Screen {
         Minecraft.getInstance().options.getMenuBackgroundBlurriness().set(10);
 
         int panelTop = Math.max(6, (height-PANEL_H)/2);
-        if (originalBlur < 0) {
-            originalBlur = Minecraft.getInstance().options.getMenuBackgroundBlurrinessValue();
-        }
-        Minecraft.getInstance().options.getMenuBackgroundBlurriness().set(10);
 
         all.clear();
         for(Block b:BuiltInRegistries.BLOCK) if(b!=Blocks.AIR) all.add(b);
