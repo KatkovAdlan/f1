@@ -1,51 +1,51 @@
 package com.xtoxray.client.mixin;
 
 import com.xtoxray.XrayState;
-import net.minecraft.core.BlockPos;
-import net.minecraft.world.level.BlockAndTintGetter;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
-import org.spongepowered.asm.mixin.injection.Coerce;
-import org.spongepowered.asm.mixin.injection.Redirect;
+import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 /**
  * Совместимость с Sodium 0.8.13 для Minecraft 1.21.1.
  *
- * Sodium строит меши чанков через собственный LevelSlice, поэтому
- * vanilla RenderChunkRegion здесь не участвует.
+ * Фильтруем LevelSlice на самом уровне getBlockState(), а не только
+ * прямой вызов из ChunkBuilderMeshingTask. Поэтому Sodium использует
+ * отфильтрованное состояние и для соседей при расчёте видимых граней.
  */
 @Mixin(
-    targets = "net.caffeinemc.mods.sodium.client.render.chunk.compile.tasks.ChunkBuilderMeshingTask",
+    targets = "net.caffeinemc.mods.sodium.client.world.LevelSlice",
     remap = false
 )
 public abstract class MixinSodiumChunkBuilderMeshingTask {
 
-    @Redirect(
-        method = "execute",
-        at = @At(
-            value = "INVOKE",
-            target = "Lnet/caffeinemc/mods/sodium/client/world/LevelSlice;getBlockState(III)Lnet/minecraft/world/level/block/state/BlockState;",
-            remap = false
-        ),
+    @Inject(
+        method = "getBlockState(III)Lnet/minecraft/world/level/block/state/BlockState;",
+        at = @At("RETURN"),
+        cancellable = true,
         remap = false
     )
-    private BlockState xtoxray$filterLevelSlice(
-            @Coerce Object levelSlice,
+    private void xtoxray$filterLevelSlice(
             int x,
             int y,
-            int z
+            int z,
+            CallbackInfoReturnable<BlockState> cir
     ) {
-        BlockState state = ((BlockAndTintGetter) levelSlice).getBlockState(new BlockPos(x, y, z));
         XrayState xray = XrayState.getInstance();
+        if (!xray.isActive()) {
+            return;
+        }
 
-        if (!xray.isActive() || state.isAir()) {
-            return state;
+        BlockState state = cir.getReturnValue();
+        if (state.isAir()) {
+            return;
         }
 
         if (!xray.shouldRender(state)) {
-            return Blocks.AIR.defaultBlockState();
+            cir.setReturnValue(Blocks.AIR.defaultBlockState());
+            return;
         }
 
         int distance = xray.getOreRenderDistance();
@@ -59,10 +59,8 @@ public abstract class MixinSodiumChunkBuilderMeshingTask {
             long dz = (long) z - cz;
 
             if (dx * dx + dy * dy + dz * dz > (long) distance * distance) {
-                return Blocks.AIR.defaultBlockState();
+                cir.setReturnValue(Blocks.AIR.defaultBlockState());
             }
         }
-
-        return state;
     }
 }
