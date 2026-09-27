@@ -16,7 +16,7 @@ import java.util.List;
 
 public final class XrayConfigScreen extends Screen {
     private static final int PANEL_W = 568, PANEL_H = 438, SIDEBAR_W = 114, HEADER_H = 37;
-    private enum Page { XRAY, VEIN, CONTAINERS, HITBOXES, KEYBINDS, VERSIONS }
+    private enum Page { XRAY, VEIN, KEYBINDS }
     private final Screen parent;
     private final XrayState state = XrayState.getInstance();
     private Page page = Page.XRAY;
@@ -77,10 +77,7 @@ public final class XrayConfigScreen extends Screen {
         switch (page) {
             case XRAY -> drawXray(g, mouseX, mouseY);
             case VEIN -> drawVein(g, mouseX, mouseY);
-            case CONTAINERS -> drawUnavailable(g, "Просмотр контейнеров");
-            case HITBOXES -> drawUnavailable(g, "Хитбоксы");
             case KEYBINDS -> drawKeybindsHint(g);
-            case VERSIONS -> drawVersions(g);
         }
         String footer = "© Random Pixel Studios";
         g.drawString(font, Component.literal(footer), left + panelW - font.width(footer) - 12, top + panelH - 15, 0xFF858585, false);
@@ -103,7 +100,7 @@ public final class XrayConfigScreen extends Screen {
     }
 
     private void drawSidebar(GuiGraphics g,int mx,int my) {
-        String[] labels={"Рентген","Добыча жил","Контейнеры","Хитбоксы","Клавиши","Версии"};
+        String[] labels={"Рентген","Добыча жил","Клавиши"};
         for(int i=0;i<labels.length;i++){
             int y=top+HEADER_H+i*29;
             boolean sel=page.ordinal()==i, hov=mx>=left+2&&mx<left+SIDEBAR_W-2&&my>=y&&my<y+29;
@@ -161,19 +158,6 @@ public final class XrayConfigScreen extends Screen {
         int x=contentLeft(), y=top+HEADER_H+179;
         g.drawString(font,Component.literal("Настройки сохраняются автоматически."),x,y,0xFF999999,false);
         g.drawString(font,Component.literal("Назначение: Escape отменяет ввод, Backspace снимает клавишу."),x,y+14,0xFF777777,false);
-    }
-
-    private void drawUnavailable(GuiGraphics g,String titleText){
-        int x=contentLeft(), w=Math.min(258,contentWidth()), y=top+49;
-        g.fill(x,y,x+w,y+25,0xFF202020); g.hLine(x,x+w,y,0xFF4A4A4A); g.hLine(x,x+w,y+25,0xFF171717);
-        g.drawCenteredString(font,Component.literal(titleText),x+w/2,y+7,0xFFFFFFFF);
-        g.drawString(font,Component.literal("Функция пока не перенесена в NeoForge-порт."),x,y+43,0xFF999999,false);
-    }
-
-    private void drawVersions(GuiGraphics g){
-        int x=contentLeft(),y=top+49;
-        String[] a={"X to Xray • порт NeoForge","Minecraft: 1.21.1","NeoForge: 21.1.251","Версия мода: 1.0.0-neoforge.1"};
-        for(int i=0;i<a.length;i++) g.drawString(font,Component.literal(a[i]),x,y+i*22,i==0?0xFFFFFFFF:0xFFB8B8B8,false);
     }
 
     private boolean clickNav(double mx,double my){
