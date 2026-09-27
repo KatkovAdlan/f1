@@ -18,13 +18,18 @@ import java.util.Locale;
 public final class XrayBlockPickerScreen extends Screen {
     private static final int PANEL_W=568,PANEL_H=438,CELL=26,GAP=3,COLS=15,ROWS=11;
     private final Screen parent;
+    private final boolean veinMinerMode;
     private final XrayState state=XrayState.getInstance();
     private final List<Block> all=new ArrayList<>();
     private List<Block> filtered=List.of();
     private EditBox search;
     private int scroll;
 
-    public XrayBlockPickerScreen(Screen parent){super(Component.literal("Добавить блок"));this.parent=parent;}
+    public XrayBlockPickerScreen(Screen parent, boolean veinMinerMode){
+        super(Component.literal(veinMinerMode ? "Добавить блок в Добычу жил" : "Добавить блок в Рентген"));
+        this.parent=parent;
+        this.veinMinerMode=veinMinerMode;
+    }
 
     @Override protected void init(){
         all.clear();
@@ -58,7 +63,8 @@ public final class XrayBlockPickerScreen extends Screen {
         g.fill(left,top,right,bottom,0xE6080908);
         g.hLine(left,right,top,0xFF444444);g.hLine(left,right,bottom,0xFF444444);
         g.vLine(left,top,bottom,0xFF444444);g.vLine(right,top,bottom,0xFF444444);
-        g.drawString(font,Component.literal("Добавить блок"),left+12,top+12,0xFFFFFFFF,false);
+        String title = veinMinerMode ? "Добавить блок в Добычу жил" : "Добавить блок в Рентген";
+        g.drawString(font,Component.literal(title),left+12,top+12,0xFFFFFFFF,false);
         String resultText = filtered.size()+" найдено";
         g.drawString(font,Component.literal(resultText),right-font.width(resultText)-12,top+12,0xFF999999,false);
         int x=left+12,y=top+48;
@@ -82,7 +88,11 @@ public final class XrayBlockPickerScreen extends Screen {
         for(int i=start;i<end;i++){
             int p=i-start,col=p%COLS,row=p/COLS,bx=x+col*(CELL+GAP),by=y+row*(CELL+GAP);
             if(mx>=bx&&mx<bx+CELL&&my>=by&&my<by+CELL){
-                state.addBlock(filtered.get(i));
+                if (veinMinerMode) {
+                    state.addVeinMinerBlock(filtered.get(i));
+                } else {
+                    state.addXrayBlock(filtered.get(i));
+                }
                 return true;
             }
         }
