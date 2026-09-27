@@ -33,9 +33,9 @@ public final class XrayConfigScreen extends Screen {
 
     @Override protected void init() {
         if (originalBlur < 0) {
-            originalBlur = Minecraft.getInstance().options.getMenuBackgroundBlurrinessValue();
+            originalBlur = Minecraft.getInstance().options.menuBackgroundBlurriness().get();
         }
-        Minecraft.getInstance().options.getMenuBackgroundBlurriness().set(10);
+        Minecraft.getInstance().options.menuBackgroundBlurriness().set(10);
 
         panelW = Math.min(PANEL_W, width - 12);
         panelH = Math.min(PANEL_H, height - 12);
@@ -271,7 +271,7 @@ public final class XrayConfigScreen extends Screen {
 
     @Override public void onClose(){
         if (originalBlur >= 0) {
-            Minecraft.getInstance().options.getMenuBackgroundBlurriness().set(originalBlur);
+            Minecraft.getInstance().options.menuBackgroundBlurriness().set(originalBlur);
             Minecraft.getInstance().options.save();
             originalBlur = -1;
         }
