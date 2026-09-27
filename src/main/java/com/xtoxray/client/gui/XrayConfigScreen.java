@@ -116,7 +116,6 @@ public final class XrayConfigScreen extends Screen {
         int x=contentLeft(), y=top+HEADER_H+43;
         g.drawString(font,Component.literal("Белый список"),x,y+1,0xFFFFFFFF,false);
         drawWhitelist(g,x,y+17,mx,my);
-        drawToggle(g,x,top+panelH-49,Math.min(258,contentWidth()),state.isActive(),"Рентген",0xFF321D1C);
     }
 
     private void drawVein(GuiGraphics g,int mx,int my) {
@@ -189,7 +188,7 @@ public final class XrayConfigScreen extends Screen {
     @Override public boolean mouseClicked(double mx,double my,int button){
         if(clickNav(mx,my)) return true;
         if((page==Page.XRAY||page==Page.VEIN)){
-            int x=contentLeft(), y=page==Page.XRAY?top+HEADER_H+60:top+HEADER_H+161;
+            int x=contentLeft(), y=page==Page.XRAY?top+HEADER_H+60:top+HEADER_H+181;
             int cell=26,gap=3,cols=Math.max(1,Math.min(15,contentWidth()/29)),max=cols*6-1;
             List<Block> blocks=state.getWhitelistSorted();
             for(int i=0;i<Math.min(blocks.size(),max);i++){
@@ -198,11 +197,9 @@ public final class XrayConfigScreen extends Screen {
             }
             int ai=Math.min(blocks.size(),max), ax=x+(ai%cols)*(cell+gap), ay=y+(ai/cols)*(cell+gap);
             if(mx>=ax&&mx<ax+cell&&my>=ay&&my<ay+cell){Minecraft.getInstance().setScreen(new XrayBlockPickerScreen(this));return true;}
-            int ty=page==Page.XRAY?top+panelH-49:top+49,w=Math.min(258,contentWidth());
-            if(mx>=x&&mx<x+w&&my>=ty&&my<ty+25){
-                if(page==Page.XRAY) XrayClient.toggleXrayFromGui(Minecraft.getInstance());
-                else XrayClient.toggleVeinMinerFromGui(Minecraft.getInstance());
-                return true;
+            if(page==Page.VEIN){
+                int ty=top+49,w=Math.min(258,contentWidth());
+                if(mx>=x&&mx<x+w&&my>=ty&&my<ty+25){XrayClient.toggleVeinMinerFromGui(Minecraft.getInstance());return true;}
             }
         }
         return super.mouseClicked(mx,my,button);
