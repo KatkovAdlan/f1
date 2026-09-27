@@ -26,7 +26,6 @@ public final class XrayBlockPickerScreen extends Screen {
     private int scroll;
     private String status = "";
     private long statusUntil;
-    private int originalBlur = -1;
 
     public XrayBlockPickerScreen(Screen parent, boolean veinMinerMode){
         super(Component.literal(veinMinerMode ? "Добавить блок в Добычу жил" : "Добавить блок в Рентген"));
@@ -35,11 +34,6 @@ public final class XrayBlockPickerScreen extends Screen {
     }
 
     @Override protected void init(){
-        if (originalBlur < 0) {
-            originalBlur = Minecraft.getInstance().options.menuBackgroundBlurriness().get();
-        }
-        Minecraft.getInstance().options.menuBackgroundBlurriness().set(10);
-
         int panelTop = Math.max(6, (height-PANEL_H)/2);
 
         all.clear();
@@ -66,7 +60,7 @@ public final class XrayBlockPickerScreen extends Screen {
     }
 
     @Override public void render(GuiGraphics g,int mx,int my,float pt){
-        renderBlurredBackground(pt);
+        // Никакого blur: фон каталога блоков должен оставаться резким.
         g.fill(0, 0, width, height, 0x66000000);
         int left=(width-PANEL_W)/2,top=Math.max(6,(height-PANEL_H)/2);
         int right=left+PANEL_W,bottom=top+PANEL_H;
@@ -149,11 +143,6 @@ public final class XrayBlockPickerScreen extends Screen {
     }
 
     @Override public void onClose(){
-        if (originalBlur >= 0) {
-            Minecraft.getInstance().options.menuBackgroundBlurriness().set(originalBlur);
-            Minecraft.getInstance().options.save();
-            originalBlur = -1;
-        }
         Minecraft.getInstance().setScreen(parent);
     }
 }
