@@ -166,7 +166,7 @@ public final class XrayConfigScreen extends Screen {
         drawToggle(g,x,top+49,w,state.isVeinMiner(),"Добыча жил",0xFF4A1F1E);
         g.drawString(font,Component.literal("Прочность инструмента"),x,top+115,0xFFFFFFFF,false);
         g.drawString(font,Component.literal("Белый список"),x,top+147,0xFFFFFFFF,false);
-        String count = getFilteredWhitelist().size() + " из " + state.getWhitelistSize();
+        String count = getFilteredWhitelist().size() + " из " + getWhitelistSize();
         g.drawString(font,Component.literal(count),x+contentWidth()-font.width(count),top+148,0xFF888888,false);
         drawWhitelist(g,x,top+164,mx,my);
     }
