@@ -28,7 +28,9 @@ public final class XrayState {
     private boolean veinMiner;
     private int oreRenderDistance = 128;
     private int veinMinerDurabilityPerBlock = 1;
-    private final Set<Block> whitelist = new LinkedHashSet<>();
+
+    private final Set<Block> xrayWhitelist = new LinkedHashSet<>();
+    private final Set<Block> veinMinerWhitelist = new LinkedHashSet<>();
 
     private XrayState() {
     }
@@ -57,20 +59,36 @@ public final class XrayState {
                 veinMiner = data.veinMiner;
                 veinMinerDurabilityPerBlock = clamp(data.veinMinerDurabilityPerBlock, 1, 10);
 
-                whitelist.clear();
-                if (data.whitelist == null) {
-                    addDefaultBlocks();
-                } else {
-                    for (String id : data.whitelist) {
-                        ResourceLocation location = ResourceLocation.tryParse(id);
-                        if (location != null) {
-                            BuiltInRegistries.BLOCK.getOptional(location).ifPresent(whitelist::add);
-                        }
-                    }
+                xrayWhitelist.clear();
+                veinMinerWhitelist.clear();
+
+                // Поддерживаем старый конфиг, где был один общий список.
+                List<String> legacy = data.whitelist;
+                loadBlocks(xrayWhitelist, data.xrayWhitelist != null ? data.xrayWhitelist : legacy);
+                loadBlocks(veinMinerWhitelist, data.veinMinerWhitelist != null ? data.veinMinerWhitelist : legacy);
+
+                if (xrayWhitelist.isEmpty() && data.xrayWhitelist == null && legacy == null) {
+                    addDefaultBlocks(xrayWhitelist);
+                }
+                if (veinMinerWhitelist.isEmpty() && data.veinMinerWhitelist == null && legacy == null) {
+                    addDefaultBlocks(veinMinerWhitelist);
                 }
             }
         } catch (Exception ignored) {
             resetDefaults();
+        }
+    }
+
+    private static void loadBlocks(Set<Block> target, List<String> ids) {
+        if (ids == null) {
+            return;
+        }
+
+        for (String id : ids) {
+            ResourceLocation location = ResourceLocation.tryParse(id);
+            if (location != null) {
+                BuiltInRegistries.BLOCK.getOptional(location).ifPresent(target::add);
+            }
         }
     }
 
@@ -82,14 +100,8 @@ public final class XrayState {
             data.oreRenderDistance = oreRenderDistance;
             data.veinMiner = veinMiner;
             data.veinMinerDurabilityPerBlock = veinMinerDurabilityPerBlock;
-            data.whitelist = new ArrayList<>();
-
-            for (Block block : whitelist) {
-                ResourceLocation key = BuiltInRegistries.BLOCK.getKey(block);
-                if (key != null) {
-                    data.whitelist.add(key.toString());
-                }
-            }
+            data.xrayWhitelist = toIds(xrayWhitelist);
+            data.veinMinerWhitelist = toIds(veinMinerWhitelist);
 
             try (Writer writer = Files.newBufferedWriter(CONFIG_PATH)) {
                 GSON.toJson(data, writer);
@@ -98,35 +110,48 @@ public final class XrayState {
         }
     }
 
+    private static List<String> toIds(Set<Block> blocks) {
+        List<String> ids = new ArrayList<>();
+        for (Block block : blocks) {
+            ResourceLocation key = BuiltInRegistries.BLOCK.getKey(block);
+            if (key != null) {
+                ids.add(key.toString());
+            }
+        }
+        return ids;
+    }
+
     public void resetDefaults() {
-        whitelist.clear();
-        addDefaultBlocks();
+        xrayWhitelist.clear();
+        veinMinerWhitelist.clear();
+        addDefaultBlocks(xrayWhitelist);
+        addDefaultBlocks(veinMinerWhitelist);
         oreRenderDistance = 128;
         veinMiner = false;
         veinMinerDurabilityPerBlock = 1;
         save();
     }
 
-    private void addDefaultBlocks() {
-        whitelist.add(Blocks.COAL_ORE);
-        whitelist.add(Blocks.DEEPSLATE_COAL_ORE);
-        whitelist.add(Blocks.IRON_ORE);
-        whitelist.add(Blocks.DEEPSLATE_IRON_ORE);
-        whitelist.add(Blocks.COPPER_ORE);
-        whitelist.add(Blocks.DEEPSLATE_COPPER_ORE);
-        whitelist.add(Blocks.GOLD_ORE);
-        whitelist.add(Blocks.DEEPSLATE_GOLD_ORE);
-        whitelist.add(Blocks.EMERALD_ORE);
-        whitelist.add(Blocks.DEEPSLATE_EMERALD_ORE);
-        whitelist.add(Blocks.REDSTONE_ORE);
-        whitelist.add(Blocks.DEEPSLATE_REDSTONE_ORE);
-        whitelist.add(Blocks.LAPIS_ORE);
-        whitelist.add(Blocks.DEEPSLATE_LAPIS_ORE);
-        whitelist.add(Blocks.DIAMOND_ORE);
-        whitelist.add(Blocks.DEEPSLATE_DIAMOND_ORE);
-        whitelist.add(Blocks.NETHER_GOLD_ORE);
-        whitelist.add(Blocks.NETHER_QUARTZ_ORE);
-        whitelist.add(Blocks.ANCIENT_DEBRIS);
+    private static void addDefaultBlocks(Set<Block> target) {
+        target.add(Blocks.COAL_ORE);
+        target.add(Blocks.DEEPSLATE_COAL_ORE);
+        target.add(Blocks.IRON_ORE);
+        target.add(Blocks.DEEPSLATE_IRON_ORE);
+        target.add(Blocks.COPPER_ORE);
+        target.add(Blocks.DEEPSLATE_COPPER_ORE);
+        target.add(Blocks.GOLD_ORE);
+        target.add(Blocks.DEEPSLATE_GOLD_ORE);
+        target.add(Blocks.EMERALD_ORE);
+        target.add(Blocks.DEEPSLATE_EMERALD_ORE);
+        target.add(Blocks.REDSTONE_ORE);
+        target.add(Blocks.DEEPSLATE_REDSTONE_ORE);
+        target.add(Blocks.LAPIS_ORE);
+        target.add(Blocks.DEEPSLATE_LAPIS_ORE);
+        target.add(Blocks.DIAMOND_ORE);
+        target.add(Blocks.DEEPSLATE_DIAMOND_ORE);
+        target.add(Blocks.NETHER_GOLD_ORE);
+        target.add(Blocks.NETHER_QUARTZ_ORE);
+        target.add(Blocks.ANCIENT_DEBRIS);
     }
 
     public boolean isActive() {
@@ -143,41 +168,23 @@ public final class XrayState {
     }
 
     public boolean shouldRender(BlockState state) {
-        return whitelist.contains(state.getBlock());
+        return xrayWhitelist.contains(state.getBlock());
     }
 
-    public boolean isWhitelisted(Block block) {
-        return whitelist.contains(block);
+    public boolean isVeinMinerWhitelisted(Block block) {
+        return veinMinerWhitelist.contains(block);
     }
 
-    public void toggleBlock(Block block) {
-        if (!whitelist.add(block)) {
-            whitelist.remove(block);
-        }
-        save();
+    public List<Block> getXrayWhitelistSorted() {
+        return sortedCopy(xrayWhitelist);
     }
 
-    public void addBlock(Block block) {
-        if (block != null && block != Blocks.AIR && whitelist.add(block)) {
-            save();
-        }
+    public List<Block> getVeinMinerWhitelistSorted() {
+        return sortedCopy(veinMinerWhitelist);
     }
 
-    public void removeBlock(Block block) {
-        if (whitelist.remove(block)) {
-            save();
-        }
-    }
-
-    public void clearBlocks() {
-        if (!whitelist.isEmpty()) {
-            whitelist.clear();
-            save();
-        }
-    }
-
-    public List<Block> getWhitelistSorted() {
-        List<Block> result = new ArrayList<>(whitelist);
+    private static List<Block> sortedCopy(Set<Block> blocks) {
+        List<Block> result = new ArrayList<>(blocks);
         result.sort(Comparator.comparing(block -> {
             ResourceLocation id = BuiltInRegistries.BLOCK.getKey(block);
             return id == null ? block.getName().getString() : id.toString();
@@ -185,12 +192,50 @@ public final class XrayState {
         return result;
     }
 
-    public List<Block> getWhitelistInOrder() {
-        return new ArrayList<>(whitelist);
+    public int getXrayWhitelistSize() {
+        return xrayWhitelist.size();
     }
 
-    public int getWhitelistSize() {
-        return whitelist.size();
+    public int getVeinMinerWhitelistSize() {
+        return veinMinerWhitelist.size();
+    }
+
+    public void addXrayBlock(Block block) {
+        if (block != null && block != Blocks.AIR && xrayWhitelist.add(block)) {
+            save();
+        }
+    }
+
+    public void addVeinMinerBlock(Block block) {
+        if (block != null && block != Blocks.AIR && veinMinerWhitelist.add(block)) {
+            save();
+        }
+    }
+
+    public void removeXrayBlock(Block block) {
+        if (xrayWhitelist.remove(block)) {
+            save();
+        }
+    }
+
+    public void removeVeinMinerBlock(Block block) {
+        if (veinMinerWhitelist.remove(block)) {
+            save();
+        }
+    }
+
+    public void clearXrayBlocks() {
+        if (!xrayWhitelist.isEmpty()) {
+            xrayWhitelist.clear();
+            save();
+        }
+    }
+
+    public void clearVeinMinerBlocks() {
+        if (!veinMinerWhitelist.isEmpty()) {
+            veinMinerWhitelist.clear();
+            save();
+        }
     }
 
     public boolean isVeinMiner() {
@@ -228,6 +273,10 @@ public final class XrayState {
         int oreRenderDistance = 128;
         boolean veinMiner;
         int veinMinerDurabilityPerBlock = 1;
+        List<String> xrayWhitelist;
+        List<String> veinMinerWhitelist;
+
+        // Поле оставлено только для чтения старых конфигов.
         List<String> whitelist;
     }
 }
