@@ -8,6 +8,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.AbstractSliderButton;
 import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
@@ -22,6 +23,7 @@ public final class XrayConfigScreen extends Screen {
     private Page page = Page.XRAY;
     private int left, top, panelW, panelH;
     private int listening = -1;
+    private EditBox whitelistSearch;
 
     public XrayConfigScreen(Screen parent) {
         super(Component.literal("XtoXray"));
@@ -36,8 +38,14 @@ public final class XrayConfigScreen extends Screen {
         clearWidgets();
 
         int x = contentLeft(), w = Math.min(258, contentWidth());
-        if (page == Page.XRAY) addRenderableWidget(new DistanceSlider(x, top + 49, w, 25, state.getOreRenderDistance()));
-        if (page == Page.VEIN) addRenderableWidget(new DurabilitySlider(x, top + 87, w, 25, state.getVeinMinerDurabilityPerBlock()));
+        if (page == Page.XRAY) {
+            addRenderableWidget(new DistanceSlider(x, top + 49, w, 25, state.getOreRenderDistance()));
+            addWhitelistSearch(x, top + 82, w);
+        }
+        if (page == Page.VEIN) {
+            addRenderableWidget(new DurabilitySlider(x, top + 87, w, 25, state.getVeinMinerDurabilityPerBlock()));
+            addWhitelistSearch(x, top + 119, w);
+        }
         if (page == Page.KEYBINDS) addKeybindWidgets();
     }
 
@@ -109,22 +117,51 @@ public final class XrayConfigScreen extends Screen {
         }
     }
 
+    private void addWhitelistSearch(int x, int y, int w) {
+        whitelistSearch = addRenderableWidget(new EditBox(font, x, y, w, 20, Component.literal("Поиск")));
+        whitelistSearch.setHint(Component.literal("Поиск по выбранным блокам..."));
+        whitelistSearch.setMaxLength(128);
+        whitelistSearch.setValue("");
+        whitelistSearch.setResponder(value -> {});
+    }
+
+    private List<Block> getFilteredWhitelist() {
+        List<Block> blocks = state.getWhitelistSorted();
+        if (whitelistSearch == null) return blocks;
+
+        String query = whitelistSearch.getValue().toLowerCase(java.util.Locale.ROOT).trim();
+        if (query.isEmpty()) return blocks;
+
+        List<Block> result = new java.util.ArrayList<>();
+        for (Block block : blocks) {
+            String name = block.getName().getString().toLowerCase(java.util.Locale.ROOT);
+            String id = String.valueOf(net.minecraft.core.registries.BuiltInRegistries.BLOCK.getKey(block))
+                .toLowerCase(java.util.Locale.ROOT);
+            if (name.contains(query) || id.contains(query)) result.add(block);
+        }
+        return result;
+    }
+
     private void drawXray(GuiGraphics g,int mx,int my) {
-        int x=contentLeft(), y=top+HEADER_H+43;
+        int x=contentLeft(), y=top+HEADER_H+112;
         g.drawString(font,Component.literal("Белый список"),x,y+1,0xFFFFFFFF,false);
+        String count = getFilteredWhitelist().size() + " из " + state.getWhitelistSize();
+        g.drawString(font,Component.literal(count),x+contentWidth()-font.width(count),y+1,0xFF888888,false);
         drawWhitelist(g,x,y+17,mx,my);
     }
 
     private void drawVein(GuiGraphics g,int mx,int my) {
         int x=contentLeft(), w=Math.min(258,contentWidth());
         drawToggle(g,x,top+49,w,state.isVeinMiner(),"Добыча жил",0xFF4A1F1E);
-        g.drawString(font,Component.literal("Прочность инструмента"),x,top+105,0xFFFFFFFF,false);
-        g.drawString(font,Component.literal("Белый список"),x,top+115,0xFFFFFFFF,false);
-        drawWhitelist(g,x,top+130,mx,my);
+        g.drawString(font,Component.literal("Прочность инструмента"),x,top+115,0xFFFFFFFF,false);
+        g.drawString(font,Component.literal("Белый список"),x,top+147,0xFFFFFFFF,false);
+        String count = getFilteredWhitelist().size() + " из " + state.getWhitelistSize();
+        g.drawString(font,Component.literal(count),x+contentWidth()-font.width(count),top+148,0xFF888888,false);
+        drawWhitelist(g,x,top+164,mx,my);
     }
 
     private void drawWhitelist(GuiGraphics g,int x,int y,int mx,int my) {
-        List<Block> blocks=state.getWhitelistSorted();
+        List<Block> blocks=getFilteredWhitelist();
         int cell=26,gap=3,cols=Math.max(1,Math.min(15,contentWidth()/29)),max=cols*6-1;
         int shown=Math.min(blocks.size(),max);
         for(int i=0;i<shown;i++) drawBlockCell(g,blocks.get(i),x+(i%cols)*(cell+gap),y+(i/cols)*(cell+gap),mx,my);
@@ -172,9 +209,9 @@ public final class XrayConfigScreen extends Screen {
     @Override public boolean mouseClicked(double mx,double my,int button){
         if(clickNav(mx,my)) return true;
         if((page==Page.XRAY||page==Page.VEIN)){
-            int x=contentLeft(), y=page==Page.XRAY?top+HEADER_H+60:top+130;
+            int x=contentLeft(), y=page==Page.XRAY?top+HEADER_H+129:top+164;
             int cell=26,gap=3,cols=Math.max(1,Math.min(15,contentWidth()/29)),max=cols*6-1;
-            List<Block> blocks=state.getWhitelistSorted();
+            List<Block> blocks=getFilteredWhitelist();
             for(int i=0;i<Math.min(blocks.size(),max);i++){
                 int bx=x+(i%cols)*(cell+gap), by=y+(i/cols)*(cell+gap);
                 if(mx>=bx&&mx<bx+cell&&my>=by&&my<by+cell){state.removeBlock(blocks.get(i));return true;}
