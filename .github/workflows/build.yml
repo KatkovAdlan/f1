@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - gui-redesign
+  pull_request:
   workflow_dispatch:
 
 jobs:
