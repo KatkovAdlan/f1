@@ -24,6 +24,9 @@ public final class XrayBlockPickerScreen extends Screen {
     private List<Block> filtered=List.of();
     private EditBox search;
     private int scroll;
+    private String status = "";
+    private long statusUntil;
+    private int originalBlur = -1;
 
     public XrayBlockPickerScreen(Screen parent, boolean veinMinerMode){
         super(Component.literal(veinMinerMode ? "Добавить блок в Добычу жил" : "Добавить блок в Рентген"));
@@ -32,6 +35,11 @@ public final class XrayBlockPickerScreen extends Screen {
     }
 
     @Override protected void init(){
+        if (originalBlur < 0) {
+            originalBlur = Minecraft.getInstance().options.getMenuBackgroundBlurrinessValue();
+        }
+        Minecraft.getInstance().options.getMenuBackgroundBlurriness().set(10);
+
         all.clear();
         for(Block b:BuiltInRegistries.BLOCK) if(b!=Blocks.AIR) all.add(b);
         all.sort(Comparator.comparing(b->b.getName().getString(),String.CASE_INSENSITIVE_ORDER));
@@ -77,7 +85,21 @@ public final class XrayBlockPickerScreen extends Screen {
             g.hLine(bx,bx+CELL,by,0xFF414141);g.hLine(bx,bx+CELL,by+CELL,0xFF101010);
             g.vLine(bx,by,by+CELL,0xFF414141);g.vLine(bx+CELL,by,by+CELL,0xFF101010);
             ItemStack s=b.asItem().getDefaultInstance();
-            if(!s.isEmpty()){g.renderItem(s,bx+5,by+5);if(h)g.renderTooltip(font,s,mx,my);}
+            if(!s.isEmpty()){
+                g.renderItem(s,bx+5,by+5);
+                boolean selected = veinMinerMode
+                    ? state.isVeinMinerWhitelisted(b)
+                    : state.isXrayWhitelisted(b);
+                if(selected){
+                    g.fill(bx+1,by+1,bx+25,by+25,0x5530A050);
+                    g.drawString(font,Component.literal("✓"),bx+16,by+3,0xFF7CFF9A,false);
+                }
+                if(h)g.renderTooltip(font,s,mx,my);
+            }
+        }
+        if(System.currentTimeMillis() < statusUntil){
+            int statusColor = status.startsWith("Добавлен:") ? 0xFF72E69A : 0xFFFFC46B;
+            g.drawCenteredString(font,Component.literal(status),width/2,bottom-37,statusColor);
         }
         g.drawCenteredString(font,Component.literal("Escape: назад"),width/2,bottom-22,0xFF777777);
         super.render(g,mx,my,pt);
@@ -89,11 +111,22 @@ public final class XrayBlockPickerScreen extends Screen {
         for(int i=start;i<end;i++){
             int p=i-start,col=p%COLS,row=p/COLS,bx=x+col*(CELL+GAP),by=y+row*(CELL+GAP);
             if(mx>=bx&&mx<bx+CELL&&my>=by&&my<by+CELL){
-                if (veinMinerMode) {
-                    state.addVeinMinerBlock(filtered.get(i));
+                Block selectedBlock = filtered.get(i);
+                boolean alreadySelected = veinMinerMode
+                    ? state.isVeinMinerWhitelisted(selectedBlock)
+                    : state.isXrayWhitelisted(selectedBlock);
+
+                if (alreadySelected) {
+                    status = "Уже добавлен: " + selectedBlock.getName().getString();
                 } else {
-                    state.addXrayBlock(filtered.get(i));
+                    if (veinMinerMode) {
+                        state.addVeinMinerBlock(selectedBlock);
+                    } else {
+                        state.addXrayBlock(selectedBlock);
+                    }
+                    status = "Добавлен: " + selectedBlock.getName().getString();
                 }
+                statusUntil = System.currentTimeMillis() + 2500L;
                 return true;
             }
         }
@@ -113,5 +146,12 @@ public final class XrayBlockPickerScreen extends Screen {
         return super.keyPressed(keyCode,scanCode,modifiers);
     }
 
-    @Override public void onClose(){Minecraft.getInstance().setScreen(parent);}
+    @Override public void onClose(){
+        if (originalBlur >= 0) {
+            Minecraft.getInstance().options.getMenuBackgroundBlurriness().set(originalBlur);
+            Minecraft.getInstance().options.save();
+            originalBlur = -1;
+        }
+        Minecraft.getInstance().setScreen(parent);
+    }
 }
