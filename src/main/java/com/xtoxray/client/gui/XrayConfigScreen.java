@@ -24,7 +24,6 @@ public final class XrayConfigScreen extends Screen {
     private int left, top, panelW, panelH;
     private int listening = -1;
     private EditBox whitelistSearch;
-    private int originalBlur = -1;
 
     public XrayConfigScreen(Screen parent) {
         super(Component.literal("XtoXray"));
@@ -32,11 +31,6 @@ public final class XrayConfigScreen extends Screen {
     }
 
     @Override protected void init() {
-        if (originalBlur < 0) {
-            originalBlur = Minecraft.getInstance().options.menuBackgroundBlurriness().get();
-        }
-        Minecraft.getInstance().options.menuBackgroundBlurriness().set(10);
-
         panelW = Math.min(PANEL_W, width - 12);
         panelH = Math.min(PANEL_H, height - 12);
         left = (width - panelW) / 2;
@@ -82,7 +76,8 @@ public final class XrayConfigScreen extends Screen {
     }
 
     @Override public void render(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
-        renderBlurredBackground(partialTick);
+        // Намеренно не вызываем renderBackground/renderBlurredBackground:
+        // фон меню XtoXray должен оставаться резким.
         g.fill(0, 0, width, height, 0x66000000);
         panelW = Math.min(PANEL_W, width - 12); panelH = Math.min(PANEL_H, height - 12);
         left = (width - panelW) / 2; top = Math.max(6, (height - panelH) / 2);
@@ -108,7 +103,7 @@ public final class XrayConfigScreen extends Screen {
 
     private void drawHeader(GuiGraphics g) {
         g.drawString(font, Component.literal("XtoXray"), left+12, top+12, 0xFFFFFFFF, false);
-        String version="Порт NeoForge 1.0.0-neoforge.2";
+        String version="Порт NeoForge 1.0.0-neoforge.4";
         g.drawString(font, Component.literal(version), left+panelW-font.width(version)-12, top+12, 0xFF4EE0B3, false);
     }
 
@@ -270,11 +265,6 @@ public final class XrayConfigScreen extends Screen {
     }
 
     @Override public void onClose(){
-        if (originalBlur >= 0) {
-            Minecraft.getInstance().options.menuBackgroundBlurriness().set(originalBlur);
-            Minecraft.getInstance().options.save();
-            originalBlur = -1;
-        }
         Minecraft.getInstance().setScreen(parent);
     }
 
