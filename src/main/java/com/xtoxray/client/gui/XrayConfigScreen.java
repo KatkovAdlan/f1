@@ -99,7 +99,7 @@ public final class XrayConfigScreen extends Screen {
     private void drawHeader(GuiGraphics g) {
         g.drawString(font, Component.literal("XtoXray"), left+12, top+12, 0xFFFFFFFF, false);
         String version="Порт NeoForge 1.0.0-neoforge.1";
-        g.drawString(font, Component.literal(version), left+panelW-font.width(version)-12, top+12, 0xFF8C8C8C, false);
+        g.drawString(font, Component.literal(version), left+panelW-font.width(version)-12, top+12, 0xFF4EE0B3, false);
     }
 
     private void drawSidebar(GuiGraphics g,int mx,int my) {
@@ -121,9 +121,9 @@ public final class XrayConfigScreen extends Screen {
     private void drawVein(GuiGraphics g,int mx,int my) {
         int x=contentLeft(), w=Math.min(258,contentWidth());
         drawToggle(g,x,top+49,w,state.isVeinMiner(),"Добыча жил",0xFF4A1F1E);
-        g.drawString(font,Component.literal("Прочность инструмента"),x,top+116,0xFFFFFFFF,false);
-        g.drawString(font,Component.literal("Белый список"),x,top+126,0xFFFFFFFF,false);
-        drawWhitelist(g,x,top+144,mx,my);
+        g.drawString(font,Component.literal("Прочность инструмента"),x,top+105,0xFFFFFFFF,false);
+        g.drawString(font,Component.literal("Белый список"),x,top+115,0xFFFFFFFF,false);
+        drawWhitelist(g,x,top+130,mx,my);
     }
 
     private void drawWhitelist(GuiGraphics g,int x,int y,int mx,int my) {
@@ -188,7 +188,7 @@ public final class XrayConfigScreen extends Screen {
     @Override public boolean mouseClicked(double mx,double my,int button){
         if(clickNav(mx,my)) return true;
         if((page==Page.XRAY||page==Page.VEIN)){
-            int x=contentLeft(), y=page==Page.XRAY?top+HEADER_H+60:top+HEADER_H+181;
+            int x=contentLeft(), y=page==Page.XRAY?top+HEADER_H+60:top+130;
             int cell=26,gap=3,cols=Math.max(1,Math.min(15,contentWidth()/29)),max=cols*6-1;
             List<Block> blocks=state.getWhitelistSorted();
             for(int i=0;i<Math.min(blocks.size(),max);i++){
