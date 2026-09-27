@@ -46,11 +46,37 @@ public final class XrayClient {
     public static void rebuildAll(Minecraft mc){if(mc.levelRenderer!=null)mc.levelRenderer.allChanged();}
     @SubscribeEvent public static void addPauseButton(ScreenEvent.Init.Post e){
         if(!(e.getScreen() instanceof PauseScreen screen))return;
-        int x=Minecraft.getInstance().getWindow().getGuiScaledWidth()/2-100,w=200,y=Minecraft.getInstance().getWindow().getGuiScaledHeight()/4+120;
-        for(var child:screen.children())if(child instanceof Button b&&b.getMessage().equals(Component.translatable("fml.menu.mods"))){x=b.getX();w=b.getWidth();y=b.getY()+b.getHeight()+4;break;}
-        eventButton(e,screen,x,y,w);
+
+        int screenWidth=Minecraft.getInstance().getWindow().getGuiScaledWidth();
+        int screenHeight=Minecraft.getInstance().getWindow().getGuiScaledHeight();
+        int width=200;
+        int height=20;
+        int x=screenWidth/2-width/2;
+
+        // Не привязываемся к конкретной кнопке. Берём самую нижнюю существующую кнопку.
+        // Поэтому сторонние моды, добавляющие новые кнопки ниже, автоматически сдвигают X to Xray.
+        int maxBottom=0;
+        for(var child:screen.children()){
+            if(child instanceof Button button){
+                maxBottom=Math.max(maxBottom,button.getY()+button.getHeight());
+            }
+        }
+
+        int y=maxBottom+4;
+
+        // На обычном экране места достаточно. Если меню необычно переполнено,
+        // не допускаем выход нашей кнопки за нижнюю границу.
+        if(y+height>screenHeight-4){
+            y=screenHeight-height-4;
+        }
+
+        eventButton(e,screen,x,y,width);
     }
-    private static void eventButton(ScreenEvent.Init.Post e,PauseScreen s,int x,int y,int w){
-        e.addListener(Button.builder(Component.literal("X to Xray"),b->Minecraft.getInstance().setScreen(new XrayConfigScreen(s))).bounds(x,y,w,20).build());
+
+    private static void eventButton(ScreenEvent.Init.Post e,PauseScreen screen,int x,int y,int width){
+        e.addListener(Button.builder(
+            Component.literal("X to Xray"),
+            b->Minecraft.getInstance().setScreen(new XrayConfigScreen(screen))
+        ).bounds(x,y,width,20).build());
     }
 }
