@@ -55,10 +55,8 @@ public final class XrayConfigScreen extends Screen {
     private void addKeybindWidgets() {
         int x = contentLeft(), w = Math.min(258, contentWidth()), y = top + HEADER_H + 12;
         addRenderableWidget(keyButton(x, y, w, "Рентген", XrayClient.TOGGLE_KEY.get(), 0));
-        addRenderableWidget(keyButton(x, y + 34, w, "Хитбоксы", null, -1));
-        addRenderableWidget(keyButton(x, y + 68, w, "Контейнеры", null, -1));
-        addRenderableWidget(keyButton(x, y + 102, w, "Добыча жил", XrayClient.VEIN_MINER_KEY.get(), 1));
-        addRenderableWidget(keyButton(x, y + 136, w, "Открыть меню", XrayClient.OPEN_MENU_KEY.get(), 2));
+        addRenderableWidget(keyButton(x, y + 34, w, "Добыча жил", XrayClient.VEIN_MINER_KEY.get(), 1));
+        addRenderableWidget(keyButton(x, y + 68, w, "Открыть меню", XrayClient.OPEN_MENU_KEY.get(), 2));
     }
 
     private Button keyButton(int x, int y, int w, String label, KeyMapping mapping, int index) {
