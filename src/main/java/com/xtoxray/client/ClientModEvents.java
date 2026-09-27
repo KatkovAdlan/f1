@@ -11,12 +11,10 @@ import net.neoforged.neoforge.client.event.RegisterKeyMappingsEvent;
     bus = EventBusSubscriber.Bus.MOD
 )
 public final class ClientModEvents {
-    private ClientModEvents() {
-    }
+    private ClientModEvents() {}
 
     @SubscribeEvent
     public static void registerKeyMappings(RegisterKeyMappingsEvent event) {
-        event.register(XrayClient.CONFIG_KEY.get());
         event.register(XrayClient.TOGGLE_KEY.get());
         event.register(XrayClient.VEIN_MINER_KEY.get());
     }
