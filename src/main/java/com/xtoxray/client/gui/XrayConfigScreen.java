@@ -1,377 +1,240 @@
 package com.xtoxray.client.gui;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import com.xtoxray.XrayState;
 import com.xtoxray.client.XrayClient;
+import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.AbstractSliderButton;
 import net.minecraft.client.gui.components.Button;
-import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.Screen;
-import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.Block;
-import net.minecraft.world.level.block.Blocks;
-import net.minecraft.world.phys.BlockHitResult;
-
-import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
-import java.util.Locale;
 
 public final class XrayConfigScreen extends Screen {
-    private static final int PANEL_W = 560;
-    private static final int PANEL_H = 352;
-    private static final int LEFT_W = 220;
-    private static final int CELL = 38;
-    private static final int GAP = 4;
-    private static final int COLS = 5;
-    private static final int SELECTED_ROWS = 3;
-    private static final int AVAILABLE_ROWS = 7;
-    private static final int ROW_H = 30;
-
+    private static final int PANEL_W = 568, PANEL_H = 438, SIDEBAR_W = 114, HEADER_H = 37;
+    private enum Page { XRAY, VEIN, CONTAINERS, HITBOXES, KEYBINDS, VERSIONS }
     private final Screen parent;
     private final XrayState state = XrayState.getInstance();
-
-    private EditBox searchBox;
-    private List<Block> allBlocks = List.of();
-    private List<Block> filteredBlocks = List.of();
-    private int selectedScroll;
-    private int availableScroll;
+    private Page page = Page.XRAY;
+    private int left, top, panelW, panelH;
+    private int listening = -1;
 
     public XrayConfigScreen(Screen parent) {
-        super(Component.literal("X to Xray"));
+        super(Component.literal("XtoXray"));
         this.parent = parent;
     }
 
-    @Override
-    protected void init() {
-        int left = left();
-        int top = top();
-        int w = panelWidth();
-
-        allBlocks = new ArrayList<>();
-        for (Block block : BuiltInRegistries.BLOCK) {
-            if (block != Blocks.AIR) allBlocks.add(block);
-        }
-        allBlocks.sort(Comparator.comparing(
-            (Block block) -> block.getName().getString(),
-            String.CASE_INSENSITIVE_ORDER
-        ).thenComparing(this::blockId, String.CASE_INSENSITIVE_ORDER));
-        rebuildFiltered();
-
-        int rightLeft = left + LEFT_W;
-        int rightW = w - LEFT_W;
-
-        searchBox = addRenderableWidget(new EditBox(
-            font, rightLeft + 8, top + 27, rightW - 16, 20, Component.literal("Поиск")
-        ));
-        searchBox.setHint(Component.literal("Поиск блоков..."));
-        searchBox.setMaxLength(128);
-        searchBox.setResponder(s -> {
-            availableScroll = 0;
-            rebuildFiltered();
-        });
-
-        int controlsY = top + PANEL_H - 67;
-        if (height < PANEL_H + 20) controlsY = top + panelHeight() - 67;
-
-        addRenderableWidget(Button.builder(Component.literal(xrayText()), b -> {
-            XrayClient.toggleXrayFromGui(Minecraft.getInstance());
-            rebuild();
-        }).bounds(left + 8, controlsY, 106, 20).build());
-
-        addRenderableWidget(Button.builder(Component.literal(veinText()), b -> {
-            XrayClient.toggleVeinMinerFromGui(Minecraft.getInstance());
-            rebuild();
-        }).bounds(left + 118, controlsY, 106, 20).build());
-
-        addRenderableWidget(Button.builder(Component.literal("Настройки клавиш"), b ->
-            Minecraft.getInstance().setScreen(new XrayKeybindsScreen(this))
-        ).bounds(left + 228, controlsY, 144, 20).build());
-
-        addRenderableWidget(new DistanceSlider(
-            left + 378, controlsY, Math.max(60, w - 386), 20, state.getOreRenderDistance()
-        ));
-
-        int actionY = controlsY + 26;
-        addRenderableWidget(Button.builder(Component.literal("Добавить из руки"), b -> {
-            addHeldBlock();
-        }).bounds(left + 8, actionY, 118, 20).build());
-
-        addRenderableWidget(Button.builder(Component.literal("Добавить смотримый"), b -> {
-            addLookedAtBlock();
-        }).bounds(left + 130, actionY, 130, 20).build());
-
-        addRenderableWidget(Button.builder(Component.literal("Очистить список"), b -> {
-            state.clearBlocks();
-            selectedScroll = 0;
-        }).bounds(left + 264, actionY, 118, 20).build());
-
-        addRenderableWidget(Button.builder(Component.literal("Сбросить"), b -> {
-            state.resetDefaults();
-            selectedScroll = 0;
-            availableScroll = 0;
-        }).bounds(left + 386, actionY, Math.max(60, w - 394), 20).build());
-
-        addRenderableWidget(Button.builder(Component.literal("Готово"), b -> onClose())
-            .bounds(left + 8, actionY + 26, w - 16, 20).build());
-    }
-
-    private void rebuild() {
+    @Override protected void init() {
+        panelW = Math.min(PANEL_W, width - 12);
+        panelH = Math.min(PANEL_H, height - 12);
+        left = (width - panelW) / 2;
+        top = Math.max(6, (height - panelH) / 2);
         clearWidgets();
-        init();
+
+        int x = contentLeft(), w = Math.min(258, contentWidth());
+        if (page == Page.XRAY) addRenderableWidget(new DistanceSlider(x, top + 49, w, 25, state.getOreRenderDistance()));
+        if (page == Page.VEIN) addRenderableWidget(new DurabilitySlider(x, top + 87, w, 25, state.getVeinMinerDurabilityPerBlock()));
+        if (page == Page.KEYBINDS) addKeybindWidgets();
     }
 
-    private int panelWidth() {
-        return Math.min(PANEL_W, Math.max(320, width - 12));
+    private int contentLeft() { return left + SIDEBAR_W + 15; }
+    private int contentWidth() { return panelW - SIDEBAR_W - 30; }
+
+    private void addKeybindWidgets() {
+        int x = contentLeft(), w = Math.min(258, contentWidth()), y = top + HEADER_H + 12;
+        addRenderableWidget(keyButton(x, y, w, "Рентген", XrayClient.TOGGLE_KEY.get(), 0));
+        addRenderableWidget(keyButton(x, y + 34, w, "Хитбоксы", null, -1));
+        addRenderableWidget(keyButton(x, y + 68, w, "Контейнеры", null, -1));
+        addRenderableWidget(keyButton(x, y + 102, w, "Добыча жил", XrayClient.VEIN_MINER_KEY.get(), 1));
+        addRenderableWidget(keyButton(x, y + 136, w, "Открыть меню", XrayClient.OPEN_MENU_KEY.get(), 2));
     }
 
-    private int panelHeight() {
-        return Math.min(PANEL_H, Math.max(220, height - 12));
-    }
-
-    private int left() {
-        return (width - panelWidth()) / 2;
-    }
-
-    private int top() {
-        return Math.max(6, (height - panelHeight()) / 2);
-    }
-
-    private void rebuildFiltered() {
-        String q = searchBox == null ? "" : searchBox.getValue().trim().toLowerCase(Locale.ROOT);
-        if (q.isEmpty()) {
-            filteredBlocks = allBlocks;
-            return;
+    private Button keyButton(int x, int y, int w, String label, KeyMapping mapping, int index) {
+        Component text;
+        if (mapping == null) {
+            text = Component.literal(label + ": [Не реализовано]");
+        } else if (listening == index) {
+            text = Component.literal(label + ": [Нажмите клавишу]");
+        } else {
+            text = Component.literal(label + ": [" + mapping.getTranslatedKeyMessage().getString() + "]");
         }
-        List<Block> result = new ArrayList<>();
-        for (Block block : allBlocks) {
-            String name = block.getName().getString().toLowerCase(Locale.ROOT);
-            String id = blockId(block).toLowerCase(Locale.ROOT);
-            if (name.contains(q) || id.contains(q)) result.add(block);
+        Button b = Button.builder(text, btn -> {
+            if (mapping != null) { listening = index; init(); }
+        }).bounds(x, y, w, 25).build();
+        if (mapping == null) b.active = false;
+        return b;
+    }
+
+    @Override public void render(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
+        renderBackground(g, mouseX, mouseY, partialTick);
+        panelW = Math.min(PANEL_W, width - 12); panelH = Math.min(PANEL_H, height - 12);
+        left = (width - panelW) / 2; top = Math.max(6, (height - panelH) / 2);
+        drawFrame(g); drawHeader(g); drawSidebar(g, mouseX, mouseY);
+        switch (page) {
+            case XRAY -> drawXray(g, mouseX, mouseY);
+            case VEIN -> drawVein(g, mouseX, mouseY);
+            case CONTAINERS -> drawUnavailable(g, "Просмотр контейнеров");
+            case HITBOXES -> drawUnavailable(g, "Хитбоксы");
+            case KEYBINDS -> drawKeybindsHint(g);
+            case VERSIONS -> drawVersions(g);
         }
-        filteredBlocks = result;
+        String footer = "© Random Pixel Studios";
+        g.drawString(font, Component.literal(footer), left + panelW - font.width(footer) - 12, top + panelH - 15, 0xFF858585, false);
+        super.render(g, mouseX, mouseY, partialTick);
     }
 
-    private String blockId(Block block) {
-        var key = BuiltInRegistries.BLOCK.getKey(block);
-        return key == null ? "" : key.toString();
+    private void drawFrame(GuiGraphics g) {
+        int r=left+panelW,b=top+panelH;
+        g.fill(left-3,top-3,r+3,b+3,0x99000000);
+        g.fill(left,top,r,b,0xE6080908);
+        g.hLine(left,r,top,0xFF444444); g.hLine(left,r,b,0xFF444444);
+        g.vLine(left,top,b,0xFF444444); g.vLine(r,top,b,0xFF444444);
+        g.hLine(left,r,top+HEADER_H,0xFF3B3B3B); g.vLine(left+SIDEBAR_W,top,b,0xFF454545);
     }
 
-    private String xrayText() {
-        return "X-Ray: " + (state.isActive() ? "ВКЛ" : "ВЫКЛ");
+    private void drawHeader(GuiGraphics g) {
+        g.drawString(font, Component.literal("XtoXray"), left+12, top+12, 0xFFFFFFFF, false);
+        String version="Порт NeoForge 1.0.0-neoforge.1";
+        g.drawString(font, Component.literal(version), left+panelW-font.width(version)-12, top+12, 0xFF8C8C8C, false);
     }
 
-    private String veinText() {
-        return "VeinMiner: " + (state.isVeinMiner() ? "ВКЛ" : "ВЫКЛ");
+    private void drawSidebar(GuiGraphics g,int mx,int my) {
+        String[] labels={"Рентген","Добыча жил","Контейнеры","Хитбоксы","Клавиши","Версии"};
+        for(int i=0;i<labels.length;i++){
+            int y=top+HEADER_H+i*29;
+            boolean sel=page.ordinal()==i, hov=mx>=left+2&&mx<left+SIDEBAR_W-2&&my>=y&&my<y+29;
+            if(sel||hov) g.fill(left+2,y+1,left+SIDEBAR_W-2,y+28,sel?0xFF333333:0xFF262626);
+            g.drawString(font,Component.literal(labels[i]),left+12,y+10,0xFFE6E6E6,false);
+        }
     }
 
-    private void addHeldBlock() {
-        Minecraft mc = Minecraft.getInstance();
-        if (mc.player == null) return;
-        Block block = Block.byItem(mc.player.getMainHandItem().getItem());
-        if (block != Blocks.AIR) state.addBlock(block);
+    private void drawXray(GuiGraphics g,int mx,int my) {
+        int x=contentLeft(), y=top+HEADER_H+43;
+        g.drawString(font,Component.literal("Белый список"),x,y+1,0xFFFFFFFF,false);
+        drawWhitelist(g,x,y+17,mx,my);
+        drawToggle(g,x,top+panelH-49,Math.min(258,contentWidth()),state.isActive(),"Рентген",0xFF321D1C);
     }
 
-    private void addLookedAtBlock() {
-        Minecraft mc = Minecraft.getInstance();
-        if (!(mc.hitResult instanceof BlockHitResult hit) || mc.level == null) return;
-        Block block = mc.level.getBlockState(hit.getBlockPos()).getBlock();
-        if (block != Blocks.AIR) state.addBlock(block);
+    private void drawVein(GuiGraphics g,int mx,int my) {
+        int x=contentLeft(), w=Math.min(258,contentWidth());
+        drawToggle(g,x,top+49,w,state.isVeinMiner(),"Добыча жил",0xFF4A1F1E);
+        g.drawString(font,Component.literal("Прочность инструмента"),x,top+116,0xFFFFFFFF,false);
+        g.drawString(font,Component.literal("Белый список"),x,top+126,0xFFFFFFFF,false);
+        drawWhitelist(g,x,top+144,mx,my);
     }
 
-    @Override
-    public boolean mouseClicked(double mouseX, double mouseY, int button) {
-        int left = left();
-        int top = top();
-        int selectedLeft = left + 6;
-        int selectedTop = top + 57;
-        int selectedW = LEFT_W - 12;
+    private void drawWhitelist(GuiGraphics g,int x,int y,int mx,int my) {
+        List<Block> blocks=state.getWhitelistSorted();
+        int cell=26,gap=3,cols=Math.max(1,Math.min(15,contentWidth()/29)),max=cols*6-1;
+        int shown=Math.min(blocks.size(),max);
+        for(int i=0;i<shown;i++) drawBlockCell(g,blocks.get(i),x+(i%cols)*(cell+gap),y+(i/cols)*(cell+gap),mx,my);
+        int ai=shown, ax=x+(ai%cols)*(cell+gap), ay=y+(ai/cols)*(cell+gap);
+        g.fill(ax,ay,ax+cell,ay+cell,0xFF18381E);
+        g.hLine(ax,ax+cell,ay,0xFF2D5B34); g.hLine(ax,ax+cell,ay+cell,0xFF102312);
+        g.vLine(ax,ay,ay+cell,0xFF2D5B34); g.vLine(ax+cell,ay,ay+cell,0xFF102312);
+        g.drawCenteredString(font,Component.literal("+"),ax+cell/2,ay+6,0xFFD7FFDD);
+        if(mx>=ax&&mx<ax+cell&&my>=ay&&my<ay+cell) g.renderTooltip(font,Component.literal("Добавить блок"),mx,my);
+    }
 
-        if (mouseX >= selectedLeft && mouseX < selectedLeft + selectedW
-            && mouseY >= selectedTop
-            && mouseY < selectedTop + SELECTED_ROWS * (CELL + GAP)) {
-            int col = (int) ((mouseX - selectedLeft) / (CELL + GAP));
-            int row = (int) ((mouseY - selectedTop) / (CELL + GAP));
-            if (col >= 0 && col < COLS && row >= 0 && row < SELECTED_ROWS) {
-                List<Block> selected = state.getWhitelistSorted();
-                int index = selectedScroll * COLS + row * COLS + col;
-                if (index >= 0 && index < selected.size()) {
-                    state.removeBlock(selected.get(index));
-                    int max = Math.max(0, (selected.size() + COLS - 1) / COLS - SELECTED_ROWS);
-                    selectedScroll = Math.min(selectedScroll, max);
-                    return true;
-                }
+    private void drawBlockCell(GuiGraphics g,Block block,int x,int y,int mx,int my) {
+        boolean h=mx>=x&&mx<x+26&&my>=y&&my<y+26;
+        g.fill(x,y,x+26,y+26,h?0xFF3B3B3B:0xFF242424);
+        g.hLine(x,x+26,y,0xFF414141); g.hLine(x,x+26,y+26,0xFF101010);
+        g.vLine(x,y,y+26,0xFF414141); g.vLine(x+26,y,y+26,0xFF101010);
+        ItemStack s=block.asItem().getDefaultInstance();
+        if(!s.isEmpty()){ g.renderItem(s,x+5,y+5); if(h) g.renderTooltip(font,s,mx,my); }
+        if(h) g.drawString(font,"×",x+18,y+1,0xFFFFFFFF,false);
+    }
+
+    private void drawToggle(GuiGraphics g,int x,int y,int w,boolean on,String label,int offColor) {
+        int c=on?0xFF1D5A38:offColor;
+        g.fill(x,y,x+w,y+25,c);
+        g.hLine(x,x+w,y,on?0xFF4A9F72:0xFF9C302B); g.hLine(x,x+w,y+25,0xFF5A1513);
+        g.vLine(x,y,y+25,on?0xFF4A9F72:0xFF9C302B); g.vLine(x+w,y,y+25,0xFF5A1513);
+        g.drawCenteredString(font,Component.literal(label+": "+(on?"ВКЛ":"ВЫКЛ")),x+w/2,y+7,0xFFFFFFFF);
+    }
+
+    private void drawKeybindsHint(GuiGraphics g){
+        int x=contentLeft(), y=top+HEADER_H+179;
+        g.drawString(font,Component.literal("Настройки сохраняются автоматически."),x,y,0xFF999999,false);
+        g.drawString(font,Component.literal("Назначение: Escape отменяет ввод, Backspace снимает клавишу."),x,y+14,0xFF777777,false);
+    }
+
+    private void drawUnavailable(GuiGraphics g,String titleText){
+        int x=contentLeft(), w=Math.min(258,contentWidth()), y=top+49;
+        g.fill(x,y,x+w,y+25,0xFF202020); g.hLine(x,x+w,y,0xFF4A4A4A); g.hLine(x,x+w,y+25,0xFF171717);
+        g.drawCenteredString(font,Component.literal(titleText),x+w/2,y+7,0xFFFFFFFF);
+        g.drawString(font,Component.literal("Функция пока не перенесена в NeoForge-порт."),x,y+43,0xFF999999,false);
+    }
+
+    private void drawVersions(GuiGraphics g){
+        int x=contentLeft(),y=top+49;
+        String[] a={"X to Xray • порт NeoForge","Minecraft: 1.21.1","NeoForge: 21.1.251","Версия мода: 1.0.0-neoforge.1"};
+        for(int i=0;i<a.length;i++) g.drawString(font,Component.literal(a[i]),x,y+i*22,i==0?0xFFFFFFFF:0xFFB8B8B8,false);
+    }
+
+    private boolean clickNav(double mx,double my){
+        if(mx<left+2||mx>=left+SIDEBAR_W-2) return false;
+        int i=(int)((my-(top+HEADER_H))/29);
+        if(i<0||i>=Page.values().length) return false;
+        Page p=Page.values()[i];
+        if(p!=page){page=p;listening=-1;init();}
+        return true;
+    }
+
+    @Override public boolean mouseClicked(double mx,double my,int button){
+        if(clickNav(mx,my)) return true;
+        if((page==Page.XRAY||page==Page.VEIN)){
+            int x=contentLeft(), y=page==Page.XRAY?top+HEADER_H+60:top+HEADER_H+161;
+            int cell=26,gap=3,cols=Math.max(1,Math.min(15,contentWidth()/29)),max=cols*6-1;
+            List<Block> blocks=state.getWhitelistSorted();
+            for(int i=0;i<Math.min(blocks.size(),max);i++){
+                int bx=x+(i%cols)*(cell+gap), by=y+(i/cols)*(cell+gap);
+                if(mx>=bx&&mx<bx+cell&&my>=by&&my<by+cell){state.removeBlock(blocks.get(i));return true;}
             }
-        }
-
-        int availableLeft = left + LEFT_W + 6;
-        int availableTop = top + 54;
-        int availableW = panelWidth() - LEFT_W - 12;
-        if (mouseX >= availableLeft && mouseX < availableLeft + availableW
-            && mouseY >= availableTop && mouseY < availableTop + AVAILABLE_ROWS * ROW_H) {
-            int row = (int) ((mouseY - availableTop) / ROW_H);
-            int index = availableScroll + row;
-            if (index >= 0 && index < filteredBlocks.size()) {
-                state.toggleBlock(filteredBlocks.get(index));
+            int ai=Math.min(blocks.size(),max), ax=x+(ai%cols)*(cell+gap), ay=y+(ai/cols)*(cell+gap);
+            if(mx>=ax&&mx<ax+cell&&my>=ay&&my<ay+cell){Minecraft.getInstance().setScreen(new XrayBlockPickerScreen(this));return true;}
+            int ty=page==Page.XRAY?top+panelH-49:top+49,w=Math.min(258,contentWidth());
+            if(mx>=x&&mx<x+w&&my>=ty&&my<ty+25){
+                if(page==Page.XRAY) XrayClient.toggleXrayFromGui(Minecraft.getInstance());
+                else XrayClient.toggleVeinMinerFromGui(Minecraft.getInstance());
                 return true;
             }
         }
-
-        return super.mouseClicked(mouseX, mouseY, button);
+        return super.mouseClicked(mx,my,button);
     }
 
-    @Override
-    public boolean mouseScrolled(double mouseX, double mouseY, double delta) {
-        int left = left();
-        int top = top();
-
-        int selectedTop = top + 57;
-        if (mouseX >= left + 6 && mouseX < left + LEFT_W - 6
-            && mouseY >= selectedTop && mouseY < selectedTop + SELECTED_ROWS * (CELL + GAP)) {
-            int rows = (state.getWhitelistSize() + COLS - 1) / COLS;
-            int max = Math.max(0, rows - SELECTED_ROWS);
-            selectedScroll = clamp(selectedScroll - (int) Math.signum(delta), 0, max);
+    @Override public boolean keyPressed(int keyCode,int scanCode,int modifiers){
+        if(page==Page.KEYBINDS&&listening>=0){
+            if(keyCode==org.lwjgl.glfw.GLFW.GLFW_KEY_ESCAPE){listening=-1;init();return true;}
+            int i=listening;
+            if(keyCode==org.lwjgl.glfw.GLFW.GLFW_KEY_BACKSPACE) setKey(i,InputConstants.UNKNOWN);
+            else setKey(i,InputConstants.getKey(keyCode,scanCode));
             return true;
         }
-
-        int availableLeft = left + LEFT_W + 6;
-        int availableTop = top + 54;
-        int availableW = panelWidth() - LEFT_W - 12;
-        if (mouseX >= availableLeft && mouseX < availableLeft + availableW
-            && mouseY >= availableTop && mouseY < availableTop + AVAILABLE_ROWS * ROW_H) {
-            int max = Math.max(0, filteredBlocks.size() - AVAILABLE_ROWS);
-            availableScroll = clamp(availableScroll - (int) Math.signum(delta), 0, max);
-            return true;
-        }
-
-        return super.mouseScrolled(mouseX, mouseY, delta);
+        if(super.keyPressed(keyCode,scanCode,modifiers)) return true;
+        return keyCode==org.lwjgl.glfw.GLFW.GLFW_KEY_ESCAPE;
     }
 
-    private int clamp(int v, int min, int max) {
-        return Math.max(min, Math.min(v, max));
+    private void setKey(int i,InputConstants.Key key){
+        KeyMapping m=i==0?XrayClient.TOGGLE_KEY.get():i==1?XrayClient.VEIN_MINER_KEY.get():XrayClient.OPEN_MENU_KEY.get();
+        m.setKey(key); KeyMapping.resetMapping(); Minecraft.getInstance().options.save(); listening=-1; init();
     }
 
-    @Override
-    public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        renderBackground(graphics, mouseX, mouseY, partialTick);
-
-        int left = left();
-        int top = top();
-        int w = panelWidth();
-        int h = panelHeight();
-        int right = left + w;
-        int bottom = top + h;
-
-        graphics.fill(left - 4, top - 4, right + 4, bottom + 4, 0xCC080808);
-        graphics.fill(left, top, right, bottom, 0xE41B1B1B);
-        graphics.hLine(left, right, top, 0xFF6A6A6A);
-        graphics.hLine(left, right, bottom, 0xFF000000);
-        graphics.vLine(left, top, bottom, 0xFF6A6A6A);
-        graphics.vLine(right, top, bottom, 0xFF000000);
-
-        graphics.drawCenteredString(font, title, width / 2, top + 8, 0xFFFFFF);
-        graphics.drawCenteredString(font, Component.literal("Настройка X-Ray"), width / 2, top + 23, 0xAAAAAA);
-
-        int selectedLeft = left + 6;
-        int selectedTop = top + 57;
-        int selectedW = LEFT_W - 12;
-
-        graphics.drawString(
-            font,
-            Component.literal("Показывать блоки: " + state.getWhitelistSize()),
-            selectedLeft, top + 38, 0xFFFFFF, false
-        );
-        graphics.fill(selectedLeft, selectedTop, selectedLeft + selectedW,
-            selectedTop + SELECTED_ROWS * (CELL + GAP) - GAP, 0xB9080808);
-
-        List<Block> selected = state.getWhitelistSorted();
-        int start = selectedScroll * COLS;
-        for (int i = 0; i < COLS * SELECTED_ROWS; i++) {
-            int index = start + i;
-            int col = i % COLS;
-            int row = i / COLS;
-            int x = selectedLeft + col * (CELL + GAP);
-            int y = selectedTop + row * (CELL + GAP);
-
-            graphics.fill(x, y, x + CELL, y + CELL, 0xFF303030);
-            if (index >= selected.size()) {
-                graphics.fill(x + 1, y + 1, x + CELL - 1, y + CELL - 1, 0xFF1E1E1E);
-                continue;
-            }
-
-            Block block = selected.get(index);
-            boolean hovered = mouseX >= x && mouseX < x + CELL && mouseY >= y && mouseY < y + CELL;
-            if (hovered) graphics.fill(x + 1, y + 1, x + CELL - 1, y + CELL - 1, 0xFF4A4A4A);
-
-            ItemStack stack = block.asItem().getDefaultInstance();
-            if (!stack.isEmpty()) graphics.renderItem(stack, x + 11, y + 11);
-            graphics.drawString(font, "×", x + CELL - 9, y + 1, 0xFFFFFFFF, false);
-
-            if (hovered && !stack.isEmpty()) graphics.renderTooltip(font, stack, mouseX, mouseY);
-        }
-
-        int availableLeft = left + LEFT_W + 6;
-        int availableTop = top + 54;
-        int availableW = w - LEFT_W - 12;
-
-        graphics.drawString(font, Component.literal("Доступные блоки"), availableLeft, top + 38, 0xFFFFFF, false);
-        graphics.fill(availableLeft, availableTop, availableLeft + availableW,
-            availableTop + AVAILABLE_ROWS * ROW_H, 0xB9080808);
-
-        for (int row = 0; row < AVAILABLE_ROWS; row++) {
-            int index = availableScroll + row;
-            if (index >= filteredBlocks.size()) break;
-
-            int y = availableTop + row * ROW_H;
-            Block block = filteredBlocks.get(index);
-            boolean hovered = mouseX >= availableLeft && mouseX < availableLeft + availableW
-                && mouseY >= y && mouseY < y + ROW_H;
-
-            if (hovered) graphics.fill(availableLeft + 1, y + 1,
-                availableLeft + availableW - 1, y + ROW_H - 1, 0xFF303030);
-
-            ItemStack stack = block.asItem().getDefaultInstance();
-            if (!stack.isEmpty()) graphics.renderItem(stack, availableLeft + 5, y + 6);
-
-            String name = block.getName().getString();
-            int max = availableW - 50;
-            if (font.width(name) > max) name = font.plainSubstrByWidth(name, Math.max(1, max - 8)) + "…";
-            int color = state.isWhitelisted(block) ? 0xFF55CC55 : 0xFFFFFFFF;
-            graphics.drawString(font, name, availableLeft + 28, y + 10, color, false);
-            graphics.drawString(font, state.isWhitelisted(block) ? "✓" : "+",
-                availableLeft + availableW - 16, y + 10, 0xFFFFFFFF, false);
-
-            if (hovered && !stack.isEmpty()) graphics.renderTooltip(font, stack, mouseX, mouseY);
-        }
-
-        super.render(graphics, mouseX, mouseY, partialTick);
-    }
-
-    @Override
-    public void onClose() {
-        Minecraft.getInstance().setScreen(parent);
-    }
+    @Override public void onClose(){Minecraft.getInstance().setScreen(parent);}
 
     private static final class DistanceSlider extends AbstractSliderButton {
-        private DistanceSlider(int x, int y, int width, int height, int distance) {
-            super(x, y, width, height, Component.empty(), (distance - 32) / 480.0D);
-            updateMessage();
-        }
-
-        @Override
-        protected void updateMessage() {
-            int distance = 32 + (int) Math.round(value * 480.0D);
-            setMessage(Component.literal("Дальность X-Ray: " + distance));
-        }
-
-        @Override
-        protected void applyValue() {
-            int distance = 32 + (int) Math.round(value * 480.0D);
-            XrayState.getInstance().setOreRenderDistance(distance);
-            XrayClient.rebuildAll(Minecraft.getInstance());
-        }
+        DistanceSlider(int x,int y,int w,int h,int d){super(x,y,w,h,Component.empty(),(d-32)/480.0D);updateMessage();}
+        protected void updateMessage(){int d=32+(int)Math.round(value*480.0D);setMessage(Component.literal("Дальность: "+d+" блоков"));}
+        protected void applyValue(){int d=32+(int)Math.round(value*480.0D);XrayState.getInstance().setOreRenderDistance(d);XrayClient.rebuildAll(Minecraft.getInstance());}
+    }
+    private static final class DurabilitySlider extends AbstractSliderButton {
+        DurabilitySlider(int x,int y,int w,int h,int v){super(x,y,w,h,Component.empty(),(v-1)/9.0D);updateMessage();}
+        protected void updateMessage(){int v=1+(int)Math.round(value*9.0D);setMessage(Component.literal("Прочность на блок: "+v));}
+        protected void applyValue(){XrayState.getInstance().setVeinMinerDurabilityPerBlock(1+(int)Math.round(value*9.0D));}
     }
 }
