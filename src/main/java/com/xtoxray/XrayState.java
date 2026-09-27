@@ -2,6 +2,7 @@ package com.xtoxray;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.block.Block;
@@ -31,6 +32,10 @@ public final class XrayState {
 
     private final Set<Block> xrayWhitelist = new LinkedHashSet<>();
     private final Set<Block> veinMinerWhitelist = new LinkedHashSet<>();
+
+    private volatile int renderCenterX;
+    private volatile int renderCenterY;
+    private volatile int renderCenterZ;
 
     private XrayState() {
     }
@@ -249,6 +254,26 @@ public final class XrayState {
     public void setVeinMiner(boolean veinMiner) {
         this.veinMiner = veinMiner;
         save();
+    }
+
+    public void updateRenderCenter(BlockPos pos) {
+        if (pos != null) {
+            renderCenterX = pos.getX();
+            renderCenterY = pos.getY();
+            renderCenterZ = pos.getZ();
+        }
+    }
+
+    public int getRenderCenterX() {
+        return renderCenterX;
+    }
+
+    public int getRenderCenterY() {
+        return renderCenterY;
+    }
+
+    public int getRenderCenterZ() {
+        return renderCenterZ;
     }
 
     public int getOreRenderDistance() {
