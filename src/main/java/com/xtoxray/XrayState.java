@@ -175,6 +175,10 @@ public final class XrayState {
         return veinMinerWhitelist.contains(block);
     }
 
+    public boolean isXrayWhitelisted(Block block) {
+        return xrayWhitelist.contains(block);
+    }
+
     public List<Block> getXrayWhitelistSorted() {
         return sortedCopy(xrayWhitelist);
     }
