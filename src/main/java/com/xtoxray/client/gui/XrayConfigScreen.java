@@ -76,7 +76,8 @@ public final class XrayConfigScreen extends Screen {
     }
 
     @Override public void render(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
-        renderBackground(g, mouseX, mouseY, partialTick);
+        renderBlurredBackground(partialTick);
+        g.fill(0, 0, width, height, 0x66000000);
         panelW = Math.min(PANEL_W, width - 12); panelH = Math.min(PANEL_H, height - 12);
         left = (width - panelW) / 2; top = Math.max(6, (height - panelH) / 2);
         drawFrame(g); drawHeader(g); drawSidebar(g, mouseX, mouseY);
@@ -123,8 +124,20 @@ public final class XrayConfigScreen extends Screen {
         whitelistSearch.setResponder(value -> {});
     }
 
+    private List<Block> getWhitelistBlocks() {
+        return page == Page.VEIN
+            ? state.getVeinMinerWhitelistSorted()
+            : state.getXrayWhitelistSorted();
+    }
+
+    private int getWhitelistSize() {
+        return page == Page.VEIN
+            ? state.getVeinMinerWhitelistSize()
+            : state.getXrayWhitelistSize();
+    }
+
     private List<Block> getFilteredWhitelist() {
-        List<Block> blocks = state.getWhitelistSorted();
+        List<Block> blocks = getWhitelistBlocks();
         if (whitelistSearch == null) return blocks;
 
         String query = whitelistSearch.getValue().toLowerCase(java.util.Locale.ROOT).trim();
@@ -143,7 +156,7 @@ public final class XrayConfigScreen extends Screen {
     private void drawXray(GuiGraphics g,int mx,int my) {
         int x=contentLeft(), y=top+HEADER_H+112;
         g.drawString(font,Component.literal("Белый список"),x,y+1,0xFFFFFFFF,false);
-        String count = getFilteredWhitelist().size() + " из " + state.getWhitelistSize();
+        String count = getFilteredWhitelist().size() + " из " + getWhitelistSize();
         g.drawString(font,Component.literal(count),x+contentWidth()-font.width(count),y+1,0xFF888888,false);
         drawWhitelist(g,x,y+17,mx,my);
     }
@@ -215,7 +228,10 @@ public final class XrayConfigScreen extends Screen {
                 if(mx>=bx&&mx<bx+cell&&my>=by&&my<by+cell){state.removeBlock(blocks.get(i));return true;}
             }
             int ai=Math.min(blocks.size(),max), ax=x+(ai%cols)*(cell+gap), ay=y+(ai/cols)*(cell+gap);
-            if(mx>=ax&&mx<ax+cell&&my>=ay&&my<ay+cell){Minecraft.getInstance().setScreen(new XrayBlockPickerScreen(this));return true;}
+            if(mx>=ax&&mx<ax+cell&&my>=ay&&my<ay+cell){
+                Minecraft.getInstance().setScreen(new XrayBlockPickerScreen(this, page == Page.VEIN));
+                return true;
+            }
             if(page==Page.VEIN){
                 int ty=top+49,w=Math.min(258,contentWidth());
                 if(mx>=x&&mx<x+w&&my>=ty&&my<ty+25){XrayClient.toggleVeinMinerFromGui(Minecraft.getInstance());return true;}
