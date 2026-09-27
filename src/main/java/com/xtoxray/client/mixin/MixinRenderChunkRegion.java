@@ -13,9 +13,14 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(RenderChunkRegion.class)
 public abstract class MixinRenderChunkRegion {
+
+    /*
+     * RenderChunkRegion уже получил настоящий BlockState к моменту RETURN.
+     * Поэтому здесь безопасно заменять скрываемые блоки на воздух.
+     */
     @Inject(method = "getBlockState", at = @At("RETURN"), cancellable = true)
-    private void xtoxray$filter(BlockPos pos, CallbackInfoReturnable<BlockState> cir) {
-        BlockState state = cir.getReturnValue();
+    private void xtoxray$filter(BlockPos pos, CallbackInfoReturnable<BlockState> callback) {
+        BlockState state = callback.getReturnValue();
         XrayState xray = XrayState.getInstance();
 
         if (!xray.isActive() || state == null || state.isAir()) {
@@ -23,15 +28,18 @@ public abstract class MixinRenderChunkRegion {
         }
 
         if (!xray.shouldRender(state)) {
-            cir.setReturnValue(Blocks.AIR.defaultBlockState());
+            callback.setReturnValue(Blocks.AIR.defaultBlockState());
             return;
         }
 
         int distance = xray.getOreRenderDistance();
-        Minecraft mc = Minecraft.getInstance();
-        if (distance > 0 && mc.player != null && mc.level != null) {
-            if (pos.distSqr(mc.player.blockPosition()) >= (double) distance * distance) {
-                cir.setReturnValue(Blocks.AIR.defaultBlockState());
+        Minecraft minecraft = Minecraft.getInstance();
+
+        if (distance > 0 && minecraft.player != null) {
+            double distanceSquared = pos.distSqr(minecraft.player.blockPosition());
+
+            if (distanceSquared > (double) distance * distance) {
+                callback.setReturnValue(Blocks.AIR.defaultBlockState());
             }
         }
     }
