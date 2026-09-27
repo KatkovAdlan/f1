@@ -24,6 +24,7 @@ public final class XrayConfigScreen extends Screen {
     private int left, top, panelW, panelH;
     private int listening = -1;
     private EditBox whitelistSearch;
+    private int originalBlur = -1;
 
     public XrayConfigScreen(Screen parent) {
         super(Component.literal("XtoXray"));
@@ -31,6 +32,11 @@ public final class XrayConfigScreen extends Screen {
     }
 
     @Override protected void init() {
+        if (originalBlur < 0) {
+            originalBlur = Minecraft.getInstance().options.menuBackgroundBlurriness().get();
+        }
+        Minecraft.getInstance().options.menuBackgroundBlurriness().set(0);
+
         panelW = Math.min(PANEL_W, width - 12);
         panelH = Math.min(PANEL_H, height - 12);
         left = (width - panelW) / 2;
@@ -108,7 +114,7 @@ public final class XrayConfigScreen extends Screen {
 
     private void drawHeader(GuiGraphics g) {
         g.drawString(font, Component.literal("XtoXray"), left+12, top+12, 0xFFFFFFFF, false);
-        String version="Порт NeoForge 1.0.0-neoforge.4";
+        String version="Порт NeoForge 1.0.0-neoforge.6";
         g.drawString(font, Component.literal(version), left+panelW-font.width(version)-12, top+12, 0xFF4EE0B3, false);
     }
 
@@ -267,6 +273,14 @@ public final class XrayConfigScreen extends Screen {
     private void setKey(int i,InputConstants.Key key){
         KeyMapping m=i==0?XrayClient.TOGGLE_KEY.get():i==1?XrayClient.VEIN_MINER_KEY.get():XrayClient.OPEN_MENU_KEY.get();
         m.setKey(key); KeyMapping.resetMapping(); Minecraft.getInstance().options.save(); listening=-1; init();
+    }
+
+    @Override public void removed(){
+        if (originalBlur >= 0) {
+            Minecraft.getInstance().options.menuBackgroundBlurriness().set(originalBlur);
+            originalBlur = -1;
+        }
+        super.removed();
     }
 
     @Override public void onClose(){
