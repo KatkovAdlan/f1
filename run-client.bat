@@ -73,11 +73,16 @@ echo Первое включение может дополнительно ск�
 echo.
 
 call "%GRADLE_HOME%\bin\gradle.bat" runClient --no-daemon
+set "EXIT_CODE=%ERRORLEVEL%"
 
 echo.
 echo ========================================
-echo Minecraft завершён.
-echo Код завершения: %ERRORLEVEL%
+if "%EXIT_CODE%"=="0" (
+    echo Minecraft завершён успешно.
+) else (
+    echo Запуск завершён с ошибкой.
+)
+echo Код завершения: %EXIT_CODE%
 echo ========================================
 echo.
 pause
