@@ -36,9 +36,9 @@ public final class XrayBlockPickerScreen extends Screen {
 
     @Override protected void init(){
         if (originalBlur < 0) {
-            originalBlur = Minecraft.getInstance().options.getMenuBackgroundBlurrinessValue();
+            originalBlur = Minecraft.getInstance().options.menuBackgroundBlurriness().get();
         }
-        Minecraft.getInstance().options.getMenuBackgroundBlurriness().set(10);
+        Minecraft.getInstance().options.menuBackgroundBlurriness().set(10);
 
         int panelTop = Math.max(6, (height-PANEL_H)/2);
 
@@ -150,7 +150,7 @@ public final class XrayBlockPickerScreen extends Screen {
 
     @Override public void onClose(){
         if (originalBlur >= 0) {
-            Minecraft.getInstance().options.getMenuBackgroundBlurriness().set(originalBlur);
+            Minecraft.getInstance().options.menuBackgroundBlurriness().set(originalBlur);
             Minecraft.getInstance().options.save();
             originalBlur = -1;
         }
