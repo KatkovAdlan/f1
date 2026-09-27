@@ -75,6 +75,11 @@ public final class XrayConfigScreen extends Screen {
         return b;
     }
 
+    @Override public void renderBackground(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
+        // Vanilla Screen.renderBackground запускает GameRenderer.renderBlur().
+        // Здесь фон рисуется самим экраном, поэтому blur полностью отсутствует.
+    }
+
     @Override public void render(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
         // Намеренно не вызываем renderBackground/renderBlurredBackground:
         // фон меню XtoXray должен оставаться резким.
