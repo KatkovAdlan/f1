@@ -40,10 +40,16 @@ public final class XrayBlockPickerScreen extends Screen {
         }
         Minecraft.getInstance().options.getMenuBackgroundBlurriness().set(10);
 
+        int panelTop = Math.max(6, (height-PANEL_H)/2);
+        if (originalBlur < 0) {
+            originalBlur = Minecraft.getInstance().options.getMenuBackgroundBlurrinessValue();
+        }
+        Minecraft.getInstance().options.getMenuBackgroundBlurriness().set(10);
+
         all.clear();
         for(Block b:BuiltInRegistries.BLOCK) if(b!=Blocks.AIR) all.add(b);
         all.sort(Comparator.comparing(b->b.getName().getString(),String.CASE_INSENSITIVE_ORDER));
-        search=addRenderableWidget(new EditBox(font,width/2-284,height/2-205,568,20,Component.literal("Поиск")));
+        search=addRenderableWidget(new EditBox(font,width/2-284,panelTop+31,568,20,Component.literal("Поиск")));
         search.setHint(Component.literal("Поиск по названию или ID блока..."));
         search.setMaxLength(128);
         search.setResponder(s->{scroll=0;filter();});
@@ -76,7 +82,7 @@ public final class XrayBlockPickerScreen extends Screen {
         g.drawString(font,Component.literal(title),left+12,top+12,0xFFFFFFFF,false);
         String resultText = filtered.size()+" найдено";
         g.drawString(font,Component.literal(resultText),right-font.width(resultText)-12,top+12,0xFF999999,false);
-        int x=left+12,y=top+48;
+        int x=left+12,y=top+57;
         int start=scroll*COLS,end=Math.min(filtered.size(),start+COLS*ROWS);
         for(int i=start;i<end;i++){
             int p=i-start,col=p%COLS,row=p/COLS,bx=x+col*(CELL+GAP),by=y+row*(CELL+GAP);
@@ -106,7 +112,7 @@ public final class XrayBlockPickerScreen extends Screen {
     }
 
     @Override public boolean mouseClicked(double mx,double my,int button){
-        int left=(width-PANEL_W)/2,top=Math.max(6,(height-PANEL_H)/2),x=left+12,y=top+48;
+        int left=(width-PANEL_W)/2,top=Math.max(6,(height-PANEL_H)/2),x=left+12,y=top+57;
         int start=scroll*COLS,end=Math.min(filtered.size(),start+COLS*ROWS);
         for(int i=start;i<end;i++){
             int p=i-start,col=p%COLS,row=p/COLS,bx=x+col*(CELL+GAP),by=y+row*(CELL+GAP);
