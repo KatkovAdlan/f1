@@ -59,6 +59,10 @@ public final class XrayBlockPickerScreen extends Screen {
         filtered=r;
     }
 
+    @Override public void renderBackground(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
+        // В окне выбора блоков vanilla blur также полностью отключён.
+    }
+
     @Override public void render(GuiGraphics g,int mx,int my,float pt){
         // Никакого blur: фон каталога блоков должен оставаться резким.
         g.fill(0, 0, width, height, 0x66000000);
