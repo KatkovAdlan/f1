@@ -31,8 +31,10 @@ public final class XrayBlockPickerScreen extends Screen {
         for(Block b:BuiltInRegistries.BLOCK) if(b!=Blocks.AIR) all.add(b);
         all.sort(Comparator.comparing(b->b.getName().getString(),String.CASE_INSENSITIVE_ORDER));
         search=addRenderableWidget(new EditBox(font,width/2-284,height/2-205,568,20,Component.literal("Поиск")));
-        search.setHint(Component.literal("Поиск блоков..."));
+        search.setHint(Component.literal("Поиск по названию или ID блока..."));
+        search.setMaxLength(128);
         search.setResponder(s->{scroll=0;filter();});
+        search.setFocused(true);
         filter();
     }
 
@@ -57,6 +59,8 @@ public final class XrayBlockPickerScreen extends Screen {
         g.hLine(left,right,top,0xFF444444);g.hLine(left,right,bottom,0xFF444444);
         g.vLine(left,top,bottom,0xFF444444);g.vLine(right,top,bottom,0xFF444444);
         g.drawString(font,Component.literal("Добавить блок"),left+12,top+12,0xFFFFFFFF,false);
+        String resultText = filtered.size()+" найдено";
+        g.drawString(font,Component.literal(resultText),right-font.width(resultText)-12,top+12,0xFF999999,false);
         int x=left+12,y=top+48;
         int start=scroll*COLS,end=Math.min(filtered.size(),start+COLS*ROWS);
         for(int i=start;i<end;i++){
@@ -77,7 +81,10 @@ public final class XrayBlockPickerScreen extends Screen {
         int start=scroll*COLS,end=Math.min(filtered.size(),start+COLS*ROWS);
         for(int i=start;i<end;i++){
             int p=i-start,col=p%COLS,row=p/COLS,bx=x+col*(CELL+GAP),by=y+row*(CELL+GAP);
-            if(mx>=bx&&mx<bx+CELL&&my>=by&&my<by+CELL){state.addBlock(filtered.get(i));return true;}
+            if(mx>=bx&&mx<bx+CELL&&my>=by&&my<by+CELL){
+                state.addBlock(filtered.get(i));
+                return true;
+            }
         }
         return super.mouseClicked(mx,my,button);
     }
