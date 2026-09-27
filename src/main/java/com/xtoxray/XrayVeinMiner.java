@@ -103,11 +103,6 @@ public final class XrayVeinMiner {
                 broken++;
 
                 if (!player.isCreative() && tool.isDamageableItem()) {
-                    if (tool.nextDamageWillBreak()) {
-                        tool.hurtAndBreak(1, player, EquipmentSlot.MAINHAND);
-                        break;
-                    }
-
                     tool.hurtAndBreak(durabilityPerBlock, player, EquipmentSlot.MAINHAND);
 
                     if (tool.isEmpty()) {
