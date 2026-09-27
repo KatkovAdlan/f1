@@ -27,3 +27,6 @@ side="BOTH"
 
 [[mixins]]
 config="xtoxray.mixins.json"
+
+[[mixins]]
+config="xtoxray.embeddium.mixins.json"
