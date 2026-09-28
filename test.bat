@@ -17,15 +17,20 @@ set "SOURCE_MODS=%SOURCE_MC%\mods"
 set "TEST_MODS=%TEST_MC%\mods"
 set "WORLD_NAME=XtoXray_TestWorld"
 set "TEST_WORLD=%TEST_MC%\saves\%WORLD_NAME%"
-set "LAUNCHER=%PINECONE_ROOT%\elyprismlauncher.exe"
-set "JAR="
+set "LAUNCHER="
 
-if not exist "%LAUNCHER%" (
-    if exist "%PINECONE_ROOT%\prismlauncher.exe" set "LAUNCHER=%PINECONE_ROOT%\prismlauncher.exe"
+for %%L in (
+    "%PINECONE_ROOT%\PineconeMC.exe"
+    "%PINECONE_ROOT%\elyprismlauncher.exe"
+    "%PINECONE_ROOT%\prismlauncher.exe"
+    "%PINECONE_ROOT%\PrismLauncher.exe"
+) do (
+    if not defined LAUNCHER if exist "%%~L" set "LAUNCHER=%%~L"
 )
 
-if not exist "%LAUNCHER%" (
-    echo [ERROR] ElyPrism/PineconeMC executable not found:
+if not defined LAUNCHER (
+    echo [ERROR] PineconeMC/ElyPrism/Prism executable not found.
+    echo Expected in:
     echo %PINECONE_ROOT%
     echo.
     pause
@@ -40,14 +45,24 @@ if not exist "%SOURCE_INSTANCE%\instance.cfg" (
     exit /b 1
 )
 
-echo [1/4] Building the mod...
-call "%~dp0build.bat"
-if errorlevel 1 (
+if not exist "%SOURCE_MC%" (
+    echo [ERROR] Minecraft directory not found:
+    echo %SOURCE_MC%
     echo.
-    echo [ERROR] Build failed.
+    pause
     exit /b 1
 )
 
+echo [1/4] Building the mod...
+call "%~dp0build.bat" /nopause
+if errorlevel 1 (
+    echo.
+    echo [ERROR] Build failed.
+    pause
+    exit /b 1
+)
+
+set "JAR="
 for /f "delims=" %%J in ('dir /b /o-d "%~dp0build\libs\xtoxray-*.jar" 2^>nul') do (
     set "JAR=%~dp0build\libs\%%J"
     goto :jar_found
@@ -75,7 +90,11 @@ if not exist "%TEST_INSTANCE%" (
     copy /y "%SOURCE_INSTANCE%\instance.cfg" "%TEST_INSTANCE%\instance.cfg" >nul
     copy /y "%SOURCE_INSTANCE%\mmc-pack.json" "%TEST_INSTANCE%\mmc-pack.json" >nul
 
-    if exist "%SOURCE_INSTANCE%\icon.png" copy /y "%SOURCE_INSTANCE%\icon.png" "%TEST_INSTANCE%\icon.png" >nul
+    if exist "%SOURCE_INSTANCE%\icon.png" (
+        copy /y "%SOURCE_INSTANCE%\icon.png" "%TEST_INSTANCE%\icon.png" >nul
+    )
+
+    powershell -NoProfile -ExecutionPolicy Bypass -Command "(Get-Content -Raw '%TEST_INSTANCE%\instance.cfg') -replace '(?m)^name=.*$', 'name=XtoXray Test' | Set-Content -NoNewline '%TEST_INSTANCE%\instance.cfg'"
 
     mkdir "%TEST_MC%"
     mkdir "%TEST_MODS%"
@@ -91,57 +110,79 @@ if not exist "%TEST_INSTANCE%" (
         )
     )
 
-    if exist "%SOURCE_MC%\options.txt" copy /y "%SOURCE_MC%\options.txt" "%TEST_MC%\options.txt" >nul
-
-    powershell -NoProfile -ExecutionPolicy Bypass -Command ^
-      "$src='%SOURCE_MODS%'; $dst='%TEST_MODS%';" ^
-      "Get-ChildItem -LiteralPath $src -File -Recurse | Where-Object { $_.Name -notlike 'xtoxray-*.jar' } | ForEach-Object {" ^
-      "$rel=$_.FullName.Substring($src.Length).TrimStart('\');" ^
-      "$target=Join-Path $dst $rel;" ^
-      "New-Item -ItemType Directory -Force -Path (Split-Path $target) | Out-Null;" ^
-      "New-Item -ItemType HardLink -Path $target -Target $_.FullName -ErrorAction Stop | Out-Null" ^
-      "}"
+    if exist "%SOURCE_MC%\options.txt" (
+        copy /y "%SOURCE_MC%\options.txt" "%TEST_MC%\options.txt" >nul
+    )
 
     echo Test instance created:
     echo %TEST_INSTANCE%
 ) else (
-    echo Test instance already exists. Keeping it.
+    echo Test instance already exists.
 )
 
 echo.
-echo [3/4] Installing the freshly built XtoXray JAR...
+echo [3/4] Synchronizing mods and installing the fresh XtoXray build...
 
-if not exist "%TEST_MODS%" mkdir "%TEST_MODS%"
+powershell -NoProfile -ExecutionPolicy Bypass -Command ^
+  "$src='%SOURCE_MODS%'; $dst='%TEST_MODS%';" ^
+  "New-Item -ItemType Directory -Force -Path $dst | Out-Null;" ^
+  "Get-ChildItem -LiteralPath $dst -Force | Remove-Item -Recurse -Force;" ^
+  "Get-ChildItem -LiteralPath $src -File -Recurse | Where-Object { $_.Name -notmatch '^xtoxray-.*\.jar$' -and $_.Name -notmatch '^advanced-xray.*\.jar$' } | ForEach-Object {" ^
+  "$rel=$_.FullName.Substring($src.Length).TrimStart('\');" ^
+  "$target=Join-Path $dst $rel;" ^
+  "New-Item -ItemType Directory -Force -Path (Split-Path $target) | Out-Null;" ^
+  "New-Item -ItemType HardLink -Path $target -Target $_.FullName -ErrorAction Stop | Out-Null" ^
+  "}"
 
-del /q "%TEST_MODS%\xtoxray-*.jar" >nul 2>nul
+if errorlevel 1 (
+    echo [ERROR] Failed to synchronize mods.
+    echo Make sure Minecraft and PineconeMC are closed.
+    pause
+    exit /b 1
+)
+
 copy /y "%JAR%" "%TEST_MODS%\" >nul
-
 if errorlevel 1 (
     echo [ERROR] Failed to copy XtoXray JAR.
     pause
     exit /b 1
 )
 
-if exist "%TEST_WORLD%\level.dat" (
-    echo Test world found: %WORLD_NAME%
-    if exist "%~dp0test-datapack" (
-        robocopy "%~dp0test-datapack" "%TEST_WORLD%\datapacks\xtoxray-test" /E /R:0 /W:0 /NFL /NDL /NJH /NJS >nul
-    )
-) else (
+if not exist "%TEST_MC%\kubejs\server_scripts" (
+    mkdir "%TEST_MC%\kubejs\server_scripts"
+)
+
+copy /y "%~dp0test-kubejs\xtoxray_test_lab.js" "%TEST_MC%\kubejs\server_scripts\xtoxray_test_lab.js" >nul
+if errorlevel 1 (
+    echo [ERROR] Failed to install the test-world script.
+    pause
+    exit /b 1
+)
+
+if not exist "%TEST_WORLD%\level.dat" (
     echo.
-    echo Test world "%WORLD_NAME%" has not been created yet.
-    echo First launch will open the isolated test instance.
-    echo Create a world named "%WORLD_NAME%" once, then run this BAT again.
+    echo ========================================
+    echo FIRST RUN
+    echo ========================================
+    echo Test world "%WORLD_NAME%" does not exist yet.
+    echo Launching the isolated instance now.
+    echo In Minecraft create a new Creative world named:
+    echo %WORLD_NAME%
+    echo Then close Minecraft and run test.bat again.
+    echo ========================================
+    echo.
+) else (
+    echo Test world found: %WORLD_NAME%
 )
 
 echo.
 echo [4/4] Launching PineconeMC/ElyPrism test instance...
-echo Instance ID: XtoXray_Test
+echo Instance: XtoXray_Test
 echo.
 
 "%LAUNCHER%" -d "%PINECONE_ROOT%" -l "XtoXray_Test"
 
 echo.
-echo PineconeMC launch command finished.
+echo Test launcher command finished.
 pause
 endlocal

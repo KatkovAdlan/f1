@@ -12,7 +12,7 @@ REM === Find Java ===
 where java >nul 2>nul
 if errorlevel 1 (
     echo [ERROR] Java not found.
-    pause
+    if /I not "%~1"=="/nopause" pause
     exit /b 1
 )
 
@@ -44,21 +44,21 @@ if not exist ".gradle-dist" (
     if errorlevel 1 (
         echo.
         echo [ERROR] Failed to download or extract Gradle.
-        pause
+        if /I not "%~1"=="/nopause" pause
         exit /b 1
     )
 )
 
 set "GRADLE_HOME="
 
-for /d %%G in (".gradle-dist\gradle-*") do (
+for /d %%G in (".gradle-distgradle-*") do (
     set "GRADLE_HOME=%%~fG"
 )
 
 if not defined GRADLE_HOME (
     echo.
     echo [ERROR] Gradle not found.
-    pause
+    if /I not "%~1"=="/nopause" pause
     exit /b 1
 )
 
@@ -67,10 +67,11 @@ echo %GRADLE_HOME%
 echo.
 
 call "%GRADLE_HOME%\bin\gradle.bat" build
+set "BUILD_EXIT=%ERRORLEVEL%"
 
 echo.
 echo ========================================
-echo Build exit code: %ERRORLEVEL%
+echo Build exit code: %BUILD_EXIT%
 echo ========================================
 echo.
 
@@ -81,6 +82,9 @@ if exist "build\libs" (
     echo [WARNING] build\libs was not created.
 )
 
-echo.
-pause
-endlocal
+if /I not "%~1"=="/nopause" (
+    echo.
+    pause
+)
+
+exit /b %BUILD_EXIT%
