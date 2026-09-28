@@ -51,7 +51,7 @@ if not exist ".gradle-dist" (
 
 set "GRADLE_HOME="
 
-for /d %%G in (".gradle-distgradle-*") do (
+for /d %%G in (".gradle-dist\gradle-*") do (
     set "GRADLE_HOME=%%~fG"
 )
 
