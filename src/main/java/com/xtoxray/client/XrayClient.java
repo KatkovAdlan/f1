@@ -3,6 +3,7 @@ package com.xtoxray.client;
 import com.mojang.blaze3d.platform.InputConstants;
 import com.xtoxray.XrayState;
 import com.xtoxray.XtoXray;
+import net.minecraft.core.BlockPos;
 import com.xtoxray.client.gui.XrayConfigScreen;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
