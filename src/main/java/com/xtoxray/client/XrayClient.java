@@ -25,6 +25,7 @@ public final class XrayClient {
     public static final Lazy<KeyMapping> VEIN_MINER_KEY=Lazy.of(()->new KeyMapping("key.xtoxray.vein_miner",InputConstants.Type.KEYSYM,GLFW.GLFW_KEY_V,"key.categories.xtoxray"));
     public static final Lazy<KeyMapping> OPEN_MENU_KEY=Lazy.of(()->new KeyMapping("key.xtoxray.open_config",InputConstants.Type.KEYSYM,GLFW.GLFW_KEY_RIGHT_SHIFT,"key.categories.xtoxray"));
     private static long lastX=Long.MIN_VALUE,lastZ=Long.MIN_VALUE; private static int lastY=Integer.MIN_VALUE;
+    private static boolean hasRenderCenter=false;
     private XrayClient(){}
     @SubscribeEvent public static void onClientTick(ClientTickEvent.Post e){
         Minecraft mc=Minecraft.getInstance();
@@ -32,12 +33,34 @@ public final class XrayClient {
         while(TOGGLE_KEY.get().consumeClick())if(mc.level!=null&&mc.player!=null&&mc.screen==null)toggleXray(mc);
         while(VEIN_MINER_KEY.get().consumeClick())if(mc.level!=null&&mc.player!=null&&mc.screen==null)toggleVeinMiner(mc);
         if(mc.level!=null&&mc.player!=null){
-            XrayState.getInstance().updateRenderCenter(mc.player.blockPosition());
-        }
+            XrayState state=XrayState.getInstance();
+            BlockPos pos=mc.player.blockPosition();
 
-        if(XrayState.getInstance().isActive()&&mc.level!=null&&mc.player!=null){
-            long x=mc.player.blockPosition().getX()>>4;int y=mc.player.blockPosition().getY()>>4;long z=mc.player.blockPosition().getZ()>>4;
-            if(x!=lastX||y!=lastY||z!=lastZ){lastX=x;lastY=y;lastZ=z;rebuildAll(mc);}
+            if(state.isActive() && hasRenderCenter){
+                int oldCenterX=state.getRenderCenterX();
+                int oldCenterY=state.getRenderCenterY();
+                int oldCenterZ=state.getRenderCenterZ();
+
+                long x=pos.getX()>>4;
+                int y=pos.getY()>>4;
+                long z=pos.getZ()>>4;
+
+                if(x!=lastX||y!=lastY||z!=lastZ){
+                    lastX=x;
+                    lastY=y;
+                    lastZ=z;
+
+                    // Обновляем только секции, у которых могла измениться
+                    // видимость на границе рентген-дальности.
+                    rebuildChangedSections(mc,
+                            oldCenterX,oldCenterY,oldCenterZ,
+                            pos.getX(),pos.getY(),pos.getZ(),
+                            state.getOreRenderDistance());
+                }
+            }
+
+            state.updateRenderCenter(pos);
+            hasRenderCenter=true;
         }
     }
 
@@ -46,6 +69,7 @@ public final class XrayClient {
 
     private static void toggleXray(Minecraft mc){
         XrayState s=XrayState.getInstance();s.toggle();LocalPlayer p=mc.player;
+        hasRenderCenter=false;
         if(s.isActive()){p.addEffect(new net.minecraft.world.effect.MobEffectInstance(net.minecraft.world.effect.MobEffects.NIGHT_VISION,-1,0,false,false,false));p.displayClientMessage(Component.translatable("message.xtoxray.xray_on"),true);}
         else{p.removeEffect(net.minecraft.world.effect.MobEffects.NIGHT_VISION);p.displayClientMessage(Component.translatable("message.xtoxray.xray_off"),true);}
         lastX=Long.MIN_VALUE;lastY=Integer.MIN_VALUE;lastZ=Long.MIN_VALUE;rebuildAll(mc);
@@ -65,6 +89,76 @@ public final class XrayClient {
     }
 
     public static void rebuildAll(Minecraft mc){if(mc.levelRenderer!=null)mc.levelRenderer.allChanged();}
+
+    /**
+     * Перестраивает только те секции, где при перемещении игрока
+     * могла измениться принадлежность блока к X-Ray радиусу.
+     *
+     * Это намного мягче, чем allChanged(), который инвалидирует
+     * весь рендер мира и как раз даёт заметное моргание при ходьбе.
+     */
+    private static void rebuildChangedSections(
+            Minecraft mc,
+            int oldX,int oldY,int oldZ,
+            int newX,int newY,int newZ,
+            int radius) {
+        if(mc.levelRenderer==null || radius<=0)return;
+
+        long r=radius;
+        long radiusSq=r*r;
+
+        int minX=Math.floorDiv(Math.min(oldX,newX)-(radius+16),16);
+        int maxX=Math.floorDiv(Math.max(oldX,newX)+(radius+16),16);
+        int minY=Math.floorDiv(Math.min(oldY,newY)-(radius+16),16);
+        int maxY=Math.floorDiv(Math.max(oldY,newY)+(radius+16),16);
+        int minZ=Math.floorDiv(Math.min(oldZ,newZ)-(radius+16),16);
+        int maxZ=Math.floorDiv(Math.max(oldZ,newZ)+(radius+16),16);
+
+        for(int sx=minX;sx<=maxX;sx++){
+            for(int sy=minY;sy<=maxY;sy++){
+                for(int sz=minZ;sz<=maxZ;sz++){
+                    int x0=sx*16;
+                    int y0=sy*16;
+                    int z0=sz*16;
+                    int x1=x0+15;
+                    int y1=y0+15;
+                    int z1=z0+15;
+
+                    long oldMin=distanceSqToBox(oldX,oldY,oldZ,x0,y0,z0,x1,y1,z1);
+                    long oldMax=distanceSqToBoxFarthest(oldX,oldY,oldZ,x0,y0,z0,x1,y1,z1);
+                    long newMin=distanceSqToBox(newX,newY,newZ,x0,y0,z0,x1,y1,z1);
+                    long newMax=distanceSqToBoxFarthest(newX,newY,newZ,x0,y0,z0,x1,y1,z1);
+
+                    boolean oldInside=oldMax<=radiusSq;
+                    boolean oldOutside=oldMin>radiusSq;
+                    boolean newInside=newMax<=radiusSq;
+                    boolean newOutside=newMin>radiusSq;
+
+                    if((oldInside&&newInside)||(oldOutside&&newOutside))continue;
+
+                    mc.levelRenderer.setSectionDirty(sx,sy,sz);
+                }
+            }
+        }
+    }
+
+    private static long distanceSqToBox(
+            int px,int py,int pz,
+            int x0,int y0,int z0,int x1,int y1,int z1) {
+        long dx=px< x0 ? (long)x0-px : px>x1 ? (long)px-x1 : 0L;
+        long dy=py< y0 ? (long)y0-py : py>y1 ? (long)py-y1 : 0L;
+        long dz=pz< z0 ? (long)z0-pz : pz>z1 ? (long)pz-z1 : 0L;
+        return dx*dx+dy*dy+dz*dz;
+    }
+
+    private static long distanceSqToBoxFarthest(
+            int px,int py,int pz,
+            int x0,int y0,int z0,int x1,int y1,int z1) {
+        long dx=Math.max(Math.abs((long)px-x0),Math.abs((long)px-x1));
+        long dy=Math.max(Math.abs((long)py-y0),Math.abs((long)py-y1));
+        long dz=Math.max(Math.abs((long)pz-z0),Math.abs((long)pz-z1));
+        return dx*dx+dy*dy+dz*dz;
+    }
 
     @SubscribeEvent public static void addPauseButton(ScreenEvent.Init.Post e){
         if(!(e.getScreen() instanceof PauseScreen screen))return;
