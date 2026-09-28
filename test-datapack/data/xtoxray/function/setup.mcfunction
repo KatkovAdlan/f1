@@ -41,4 +41,5 @@ setblock -22 11 -14 minecraft:oak_sign[rotation=0]{front_text:{messages:['{"text
 setblock -16 11 -14 minecraft:oak_sign[rotation=0]{front_text:{messages:['{"text":"СТЕКЛО"}','','','']}}
 setblock -10 11 -14 minecraft:oak_sign[rotation=0]{front_text:{messages:['{"text":"ОБСИДИАН"}','','','']}}
 
-tp @a 0 12 10 180 0
+fill -8 36 2 7 120 18 minecraft:air
+tp @a 0 45 10 180 0
