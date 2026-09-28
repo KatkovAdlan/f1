@@ -45,6 +45,14 @@ if not exist "%SOURCE_INSTANCE%\instance.cfg" (
     exit /b 1
 )
 
+if not exist "%SOURCE_INSTANCE%\mmc-pack.json" (
+    echo [ERROR] Source instance metadata not found:
+    echo %SOURCE_INSTANCE%\mmc-pack.json
+    echo.
+    pause
+    exit /b 1
+)
+
 if not exist "%SOURCE_MC%" (
     echo [ERROR] Minecraft directory not found:
     echo %SOURCE_MC%
@@ -86,42 +94,38 @@ if not exist "%TEST_INSTANCE%" (
         pause
         exit /b 1
     )
+)
 
+if not exist "%TEST_INSTANCE%\instance.cfg" (
     copy /y "%SOURCE_INSTANCE%\instance.cfg" "%TEST_INSTANCE%\instance.cfg" >nul
-    copy /y "%SOURCE_INSTANCE%\mmc-pack.json" "%TEST_INSTANCE%\mmc-pack.json" >nul
-
-    if exist "%SOURCE_INSTANCE%\icon.png" (
-        copy /y "%SOURCE_INSTANCE%\icon.png" "%TEST_INSTANCE%\icon.png" >nul
-    )
-
     powershell -NoProfile -ExecutionPolicy Bypass -Command "(Get-Content -Raw '%TEST_INSTANCE%\instance.cfg') -replace '(?m)^name=.*$', 'name=XtoXray Test' | Set-Content -NoNewline '%TEST_INSTANCE%\instance.cfg'"
+)
 
-    mkdir "%TEST_MC%"
-    mkdir "%TEST_MODS%"
-    mkdir "%TEST_MC%\saves"
+if not exist "%TEST_INSTANCE%\mmc-pack.json" (
+    copy /y "%SOURCE_INSTANCE%\mmc-pack.json" "%TEST_INSTANCE%\mmc-pack.json" >nul
+)
 
-    powershell -NoProfile -ExecutionPolicy Bypass -Command ^
-      "$src='%SOURCE_MC%'; $dst='%TEST_MC%';" ^
-      "Get-ChildItem -LiteralPath $src -File -Force | Where-Object { $_.Name -notin @('servers.dat','servers.dat_old') } | ForEach-Object { Copy-Item -LiteralPath $_.FullName -Destination (Join-Path $dst $_.Name) -Force }"
+if not exist "%TEST_MC%" mkdir "%TEST_MC%"
+if not exist "%TEST_MODS%" mkdir "%TEST_MODS%"
+if not exist "%TEST_MC%\saves" mkdir "%TEST_MC%\saves"
 
-    for %%D in (config defaultconfigs kubejs scripts resourcepacks shaderpacks) do (
-        if exist "%SOURCE_MC%\%%D" (
-            robocopy "%SOURCE_MC%\%%D" "%TEST_MC%\%%D" /E /R:0 /W:0 /NFL /NDL /NJH /NJS >nul
-        )
+if exist "%SOURCE_INSTANCE%\icon.png" if not exist "%TEST_INSTANCE%\icon.png" (
+    copy /y "%SOURCE_INSTANCE%\icon.png" "%TEST_INSTANCE%\icon.png" >nul
+)
+
+if not exist "%TEST_MC%\options.txt" if exist "%SOURCE_MC%\options.txt" (
+    copy /y "%SOURCE_MC%\options.txt" "%TEST_MC%\options.txt" >nul
+)
+
+for %%D in (config defaultconfigs kubejs scripts resourcepacks shaderpacks) do (
+    if not exist "%TEST_MC%\%%D" if exist "%SOURCE_MC%\%%D" (
+        robocopy "%SOURCE_MC%\%%D" "%TEST_MC%\%%D" /E /R:0 /W:0 /NFL /NDL /NJH /NJS >nul
     )
-
-    if exist "%SOURCE_MC%\options.txt" (
-        copy /y "%SOURCE_MC%\options.txt" "%TEST_MC%\options.txt" >nul
-    )
-
-    echo Test instance created:
-    echo %TEST_INSTANCE%
-) else (
-    echo Test instance already exists.
 )
 
 echo.
 echo [3/4] Synchronizing mods and installing the fresh XtoXray build...
+echo Advanced XRay is intentionally excluded from the test instance.
 
 powershell -NoProfile -ExecutionPolicy Bypass -Command ^
   "$src='%SOURCE_MODS%'; $dst='%TEST_MODS%';" ^
@@ -166,9 +170,14 @@ if not exist "%TEST_WORLD%\level.dat" (
     echo ========================================
     echo Test world "%WORLD_NAME%" does not exist yet.
     echo Launching the isolated instance now.
-    echo In Minecraft create a new Creative world named:
-    echo %WORLD_NAME%
-    echo Then close Minecraft and run test.bat again.
+    echo.
+    echo In Minecraft:
+    echo 1. Create a Creative world named "%WORLD_NAME%".
+    echo 2. Enter the world once.
+    echo 3. Close Minecraft.
+    echo 4. Run test.bat again.
+    echo.
+    echo The test script will then build the test lab automatically.
     echo ========================================
     echo.
 ) else (
