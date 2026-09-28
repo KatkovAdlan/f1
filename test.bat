@@ -173,11 +173,10 @@ if not exist "%TEST_WORLD%\level.dat" (
     echo.
     echo In Minecraft:
     echo 1. Create a Creative world named "%WORLD_NAME%".
-    echo 2. Enter the world once.
-    echo 3. Close Minecraft.
-    echo 4. Run test.bat again.
+    echo 2. Enter the world.
+    echo 3. The test lab will be built automatically.
     echo.
-    echo The test script will then build the test lab automatically.
+    echo You can close the game and use test.bat again for later launches.
     echo ========================================
     echo.
 ) else (
