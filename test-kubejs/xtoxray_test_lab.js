@@ -160,3 +160,12 @@ ServerEvents.loaded(event => {
   run(server, 'title @a title {"text":"XtoXray TEST LAB","color":"aqua"}');
   run(server, 'title @a subtitle {"text":"Свежая сборка XtoXray","color":"white"}');
 });
+
+PlayerEvents.loggedIn(event => {
+  const server = event.server;
+
+  run(server, 'gamemode creative @a');
+  run(server, 'tp @a 0 35 30 180 0');
+  run(server, 'title @a title {"text":"XtoXray TEST LAB","color":"aqua"}');
+  run(server, 'title @a subtitle {"text":"Свежая сборка XtoXray","color":"white"}');
+});
