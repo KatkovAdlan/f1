@@ -1,45 +1,61 @@
 package com.xtoxray.client.mixin;
 
-import com.mojang.blaze3d.systems.RenderSystem;
 import com.xtoxray.XrayState;
 import net.minecraft.client.renderer.LevelRenderer;
 import net.minecraft.resources.ResourceLocation;
+import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Mutable;
+import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
-import org.spongepowered.asm.mixin.injection.Redirect;
+import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
  * Убираем солнце и луну из неба во время X-Ray.
  *
- * Само небо и его цвет остаются ванильными. Мы подменяем только
- * текстуры солнца и луны на полностью прозрачную текстуру.
+ * В Minecraft 1.21.1 эти текстуры хранятся в статических полях
+ * LevelRenderer и используются непосредственно внутри renderSky().
+ * Временно подменяем именно эти ссылки на прозрачную текстуру.
  */
 @Mixin(LevelRenderer.class)
 public abstract class MixinLevelRendererSky {
 
-    private static final ResourceLocation SUN_TEXTURE =
-            ResourceLocation.withDefaultNamespace("textures/environment/sun.png");
-
-    private static final ResourceLocation MOON_TEXTURE =
-            ResourceLocation.withDefaultNamespace("textures/environment/moon_phases.png");
-
     private static final ResourceLocation TRANSPARENT_TEXTURE =
             ResourceLocation.fromNamespaceAndPath("xtoxray", "textures/misc/transparent.png");
 
-    @Redirect(
-        method = "renderSky",
-        at = @At(
-            value = "INVOKE",
-            target = "Lcom/mojang/blaze3d/systems/RenderSystem;setShaderTexture(ILnet/minecraft/resources/ResourceLocation;)V"
-        )
-    )
-    private void xtoxray$hideSunMoon(int slot, ResourceLocation texture) {
-        if (XrayState.getInstance().isActive()
-                && (SUN_TEXTURE.equals(texture) || MOON_TEXTURE.equals(texture))) {
-            RenderSystem.setShaderTexture(slot, TRANSPARENT_TEXTURE);
+    @Shadow @Final @Mutable
+    private static ResourceLocation SUN_LOCATION;
+
+    @Shadow @Final @Mutable
+    private static ResourceLocation MOON_LOCATION;
+
+    private static ResourceLocation xtoxray$originalSun;
+    private static ResourceLocation xtoxray$originalMoon;
+
+    @Inject(method = "renderSky", at = @At("HEAD"))
+    private void xtoxray$hideSunMoon(CallbackInfo ci) {
+        if (!XrayState.getInstance().isActive()) {
             return;
         }
 
-        RenderSystem.setShaderTexture(slot, texture);
+        xtoxray$originalSun = SUN_LOCATION;
+        xtoxray$originalMoon = MOON_LOCATION;
+
+        SUN_LOCATION = TRANSPARENT_TEXTURE;
+        MOON_LOCATION = TRANSPARENT_TEXTURE;
+    }
+
+    @Inject(method = "renderSky", at = @At("RETURN"))
+    private void xtoxray$restoreSunMoon(CallbackInfo ci) {
+        if (xtoxray$originalSun != null) {
+            SUN_LOCATION = xtoxray$originalSun;
+            xtoxray$originalSun = null;
+        }
+
+        if (xtoxray$originalMoon != null) {
+            MOON_LOCATION = xtoxray$originalMoon;
+            xtoxray$originalMoon = null;
+        }
     }
 }
