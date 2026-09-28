@@ -1,3 +1,27 @@
 {
-  "key.xtoxray.toggle": "Toggle X to Xray"
+  "key.categories.xtoxray": "X to Xray",
+  "key.xtoxray.open_config": "Open X to Xray menu",
+  "key.xtoxray.toggle": "Toggle X-Ray",
+  "key.xtoxray.vein_miner": "Toggle VeinMiner",
+  "screen.xtoxray.title": "X to Xray",
+  "screen.xtoxray.subtitle": "Choose which blocks X-Ray should show",
+  "screen.xtoxray.selected": "Selected blocks (%s)",
+  "screen.xtoxray.available": "Available blocks",
+  "screen.xtoxray.search": "Search blocks...",
+  "screen.xtoxray.add_held": "Add block in hand",
+  "screen.xtoxray.add_looked": "Add looked-at block",
+  "screen.xtoxray.clear": "Clear all",
+  "screen.xtoxray.reset": "Reset defaults",
+  "screen.xtoxray.xray": "X-Ray: %s",
+  "screen.xtoxray.vein": "VeinMiner: %s",
+  "screen.xtoxray.distance": "X-Ray distance: %s blocks",
+  "screen.xtoxray.done": "Done",
+  "screen.xtoxray.on": "ON",
+  "screen.xtoxray.off": "OFF",
+  "screen.xtoxray.key_hint": "Keys: menu %s | X-Ray %s | VeinMiner %s",
+  "screen.xtoxray.none": "No blocks found",
+  "message.xtoxray.xray_on": "X-Ray enabled",
+  "message.xtoxray.xray_off": "X-Ray disabled",
+  "message.xtoxray.vein_on": "VeinMiner enabled",
+  "message.xtoxray.vein_off": "VeinMiner disabled"
 }

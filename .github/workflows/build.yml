@@ -1,0 +1,36 @@
+name: Сборка NeoForge-мода
+
+on:
+  push:
+    branches:
+      - gui-redesign
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Получить исходники
+        uses: actions/checkout@v6
+
+      - name: Установить Java 21
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Настроить Gradle
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: '8.13'
+
+      - name: Собрать мод
+        run: gradle build --no-daemon
+
+      - name: Загрузить JAR
+        uses: actions/upload-artifact@v6
+        with:
+          name: xtoxray-neoforge-1.21.1
+          path: build/libs/*.jar

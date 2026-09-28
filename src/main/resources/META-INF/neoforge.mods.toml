@@ -9,7 +9,7 @@ modId="${mod_id}"
 version="${version}"
 displayName="${mod_name}"
 authors="Private port"
-description='''NeoForge 1.21.1 clean-room port of the XtoXray feature set. Includes configurable X-Ray, vein miner and custom resource pack support.'''
+description='''Порт X to Xray для NeoForge 1.21.1. Настраиваемый рентген, добыча жил и выбор блоков с удобным поиском.'''
 
 [[dependencies.${mod_id}]]
 modId="neoforge"
@@ -27,3 +27,6 @@ side="BOTH"
 
 [[mixins]]
 config="xtoxray.mixins.json"
+
+[[mixins]]
+config="xtoxray.sodium.mixins.json"

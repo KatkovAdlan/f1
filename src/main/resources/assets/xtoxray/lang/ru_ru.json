@@ -1,3 +1,27 @@
 {
-  "key.xtoxray.toggle": "Переключить X-Ray"
+  "key.categories.xtoxray": "X to Xray",
+  "key.xtoxray.open_config": "Открыть меню X to Xray",
+  "key.xtoxray.toggle": "Включить/выключить рентген",
+  "key.xtoxray.vein_miner": "Включить/выключить добычу жил",
+  "screen.xtoxray.title": "XtoXray",
+  "screen.xtoxray.subtitle": "Настройка отображаемых блоков",
+  "screen.xtoxray.selected": "Выбранные блоки: %s",
+  "screen.xtoxray.available": "Доступные блоки",
+  "screen.xtoxray.search": "Поиск блоков...",
+  "screen.xtoxray.add_held": "Добавить блок в руке",
+  "screen.xtoxray.add_looked": "Добавить блок, на который смотрите",
+  "screen.xtoxray.clear": "Очистить список",
+  "screen.xtoxray.reset": "Сбросить настройки",
+  "screen.xtoxray.xray": "Рентген: %s",
+  "screen.xtoxray.vein": "Добыча жил: %s",
+  "screen.xtoxray.distance": "Дальность рентгена: %s блоков",
+  "screen.xtoxray.done": "Готово",
+  "screen.xtoxray.on": "ВКЛ",
+  "screen.xtoxray.off": "ВЫКЛ",
+  "screen.xtoxray.key_hint": "Клавиши: меню %s | рентген %s | добыча жил %s",
+  "screen.xtoxray.none": "Блоки не найдены",
+  "message.xtoxray.xray_on": "Рентген включён",
+  "message.xtoxray.xray_off": "Рентген выключен",
+  "message.xtoxray.vein_on": "Добыча жил включена",
+  "message.xtoxray.vein_off": "Добыча жил выключена"
 }

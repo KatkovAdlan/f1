@@ -1,11 +1,9 @@
 {
-  "required": true,
+  "required": false,
   "minVersion": "0.8",
   "package": "com.xtoxray.client.mixin",
   "compatibilityLevel": "JAVA_21",
   "client": [
-    "MixinRenderChunkRegion",
-    "MixinParticleEngine",
-    "MixinLevelRendererSky"
+    "MixinSodiumChunkBuilderMeshingTask"
   ]
 }
