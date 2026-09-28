@@ -25,9 +25,11 @@ public abstract class MixinLevelRendererSky {
             ResourceLocation.fromNamespaceAndPath("xtoxray", "textures/misc/transparent.png");
 
     @Shadow
+    @org.spongepowered.asm.mixin.Final
     private static ResourceLocation SUN_LOCATION;
 
     @Shadow
+    @org.spongepowered.asm.mixin.Final
     private static ResourceLocation MOON_LOCATION;
 
     @Redirect(
