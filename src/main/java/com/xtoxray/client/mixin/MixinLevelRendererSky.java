@@ -5,6 +5,7 @@ import net.minecraft.client.renderer.LevelRenderer;
 import net.minecraft.resources.ResourceLocation;
 import org.objectweb.asm.Opcodes;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Redirect;
 
@@ -13,15 +14,21 @@ import org.spongepowered.asm.mixin.injection.Redirect;
  *
  * В Minecraft 1.21.1 LevelRenderer хранит текстуры солнца и луны
  * в статических полях и читает их непосредственно внутри renderSky().
- * Вместо изменения самих static final полей перехватываем именно
- * чтение этих полей в renderSky(). Это не требует временной мутации
- * полей и меньше конфликтует с другими миксинами, включая Iris.
+ * Вместо временной мутации static final полей перехватываем именно
+ * чтение этих полей в renderSky(). Это оставляет исходные поля
+ * неизменными и уменьшает риск конфликтов с другими миксинами.
  */
 @Mixin(LevelRenderer.class)
 public abstract class MixinLevelRendererSky {
 
     private static final ResourceLocation TRANSPARENT_TEXTURE =
             ResourceLocation.fromNamespaceAndPath("xtoxray", "textures/misc/transparent.png");
+
+    @Shadow
+    private static ResourceLocation SUN_LOCATION;
+
+    @Shadow
+    private static ResourceLocation MOON_LOCATION;
 
     @Redirect(
         method = "renderSky",
@@ -34,7 +41,7 @@ public abstract class MixinLevelRendererSky {
     private static ResourceLocation xtoxray$redirectSunTexture() {
         return XrayState.getInstance().isActive()
             ? TRANSPARENT_TEXTURE
-            : getSunTexture();
+            : SUN_LOCATION;
     }
 
     @Redirect(
@@ -48,16 +55,6 @@ public abstract class MixinLevelRendererSky {
     private static ResourceLocation xtoxray$redirectMoonTexture() {
         return XrayState.getInstance().isActive()
             ? TRANSPARENT_TEXTURE
-            : getMoonTexture();
-    }
-
-    @org.spongepowered.asm.mixin.Shadow
-    private static ResourceLocation getSunTexture() {
-        throw new AssertionError();
-    }
-
-    @org.spongepowered.asm.mixin.Shadow
-    private static ResourceLocation getMoonTexture() {
-        throw new AssertionError();
+            : MOON_LOCATION;
     }
 }
