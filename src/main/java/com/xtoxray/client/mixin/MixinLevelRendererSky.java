@@ -1,5 +1,6 @@
 package com.xtoxray.client.mixin;
 
+import com.mojang.blaze3d.systems.RenderSystem;
 import com.xtoxray.XrayState;
 import net.minecraft.client.renderer.LevelRenderer;
 import net.minecraft.resources.ResourceLocation;
@@ -12,11 +13,9 @@ import org.spongepowered.asm.mixin.injection.Redirect;
 /**
  * Убираем солнце и луну из неба во время X-Ray.
  *
- * В Minecraft 1.21.1 LevelRenderer хранит текстуры солнца и луны
- * в статических полях и читает их непосредственно внутри renderSky().
- * Вместо временной мутации static final полей перехватываем именно
- * чтение этих полей в renderSky(). Это оставляет исходные поля
- * неизменными и уменьшает риск конфликтов с другими миксинами.
+ * Minecraft 1.21.1 хранит ссылки на текстуры солнца и луны в LevelRenderer.
+ * Вместо попытки подменять сами static final поля перехватываем привязку
+ * текстуры непосредственно в RenderSystem.setShaderTexture() внутри renderSky().
  */
 @Mixin(LevelRenderer.class)
 public abstract class MixinLevelRendererSky {
@@ -35,28 +34,17 @@ public abstract class MixinLevelRendererSky {
     @Redirect(
         method = "renderSky",
         at = @At(
-            value = "FIELD",
-            target = "Lnet/minecraft/client/renderer/LevelRenderer;SUN_LOCATION:Lnet/minecraft/resources/ResourceLocation;",
-            opcode = Opcodes.GETSTATIC
+            value = "INVOKE",
+            target = "Lcom/mojang/blaze3d/systems/RenderSystem;setShaderTexture(ILnet/minecraft/resources/ResourceLocation;)V"
         )
     )
-    private static ResourceLocation xtoxray$redirectSunTexture() {
-        return XrayState.getInstance().isActive()
-            ? TRANSPARENT_TEXTURE
-            : SUN_LOCATION;
-    }
+    private void xtoxray$redirectSkyTexture(int textureUnit, ResourceLocation texture) {
+        if (XrayState.getInstance().isActive()
+                && (SUN_LOCATION.equals(texture) || MOON_LOCATION.equals(texture))) {
+            RenderSystem.setShaderTexture(textureUnit, TRANSPARENT_TEXTURE);
+            return;
+        }
 
-    @Redirect(
-        method = "renderSky",
-        at = @At(
-            value = "FIELD",
-            target = "Lnet/minecraft/client/renderer/LevelRenderer;MOON_LOCATION:Lnet/minecraft/resources/ResourceLocation;",
-            opcode = Opcodes.GETSTATIC
-        )
-    )
-    private static ResourceLocation xtoxray$redirectMoonTexture() {
-        return XrayState.getInstance().isActive()
-            ? TRANSPARENT_TEXTURE
-            : MOON_LOCATION;
+        RenderSystem.setShaderTexture(textureUnit, texture);
     }
 }
