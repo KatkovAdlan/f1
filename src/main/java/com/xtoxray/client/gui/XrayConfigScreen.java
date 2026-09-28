@@ -2,6 +2,7 @@ package com.xtoxray.client.gui;
 
 import com.mojang.blaze3d.platform.InputConstants;
 import com.xtoxray.XrayState;
+import com.xtoxray.XtoXray;
 import com.xtoxray.client.XrayClient;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
@@ -114,7 +115,7 @@ public final class XrayConfigScreen extends Screen {
 
     private void drawHeader(GuiGraphics g) {
         g.drawString(font, Component.literal("XtoXray"), left+12, top+12, 0xFFFFFFFF, false);
-        String version="Порт NeoForge 1.0.0-neoforge.13";
+        String version="Порт NeoForge "+XtoXray.getModVersion();
         g.drawString(font, Component.literal(version), left+panelW-font.width(version)-12, top+12, 0xFF4EE0B3, false);
     }
 
