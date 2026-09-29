@@ -137,9 +137,6 @@ ServerEvents.loaded(event => {
   run(server, 'time set noon');
   run(server, 'weather clear');
 
-  run(server, 'worldborder center 0 0');
-  run(server, 'worldborder set 128');
-
   // Пересобираем только тестовую арену. Остальные миры не затрагиваются.
   run(server, 'fill -40 10 -40 39 62 39 minecraft:air');
   run(server, 'fill -40 10 -40 39 10 39 minecraft:stone');
