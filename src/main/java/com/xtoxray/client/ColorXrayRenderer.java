@@ -12,7 +12,6 @@ import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.ChunkPos;
-import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.level.chunk.status.ChunkStatus;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -147,7 +146,7 @@ public final class ColorXrayRenderer {
             return;
         }
 
-        LevelChunk chunk = mc.level.getChunk(chunkX, chunkZ, ChunkStatus.FULL, false);
+        var chunk = mc.level.getChunk(chunkX, chunkZ, ChunkStatus.FULL, false);
         long packedChunk = ChunkPos.asLong(chunkX, chunkZ);
         if (chunk == null) {
             TARGETS_BY_CHUNK.put(packedChunk, Collections.emptyList());
