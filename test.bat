@@ -212,7 +212,7 @@ if exist "%TEST_WORLD%\level.dat" (
       "$keys=@('OverrideCommands','WrapperCommand','JoinServerOnLaunch','JoinServerOnLaunchAddress','JoinWorldOnLaunch');" ^
       "$lines=@($lines | Where-Object { $line=$_; foreach($key in $keys){ if($line -match ('^'+[regex]::Escape($key)+'=')){ return $false } }; return $true });" ^
       "$lines += 'OverrideCommands=true';" ^
-      "$lines += 'WrapperCommand=""%JAVA_EXE%"" -cp ""%WRAPPER_CLASSES%"" TestLaunchWrapper --world %WORLD_NAME%';" ^
+      "$lines += 'WrapperCommand=java -cp ""%WRAPPER_CLASSES%"" TestLaunchWrapper --world %WORLD_NAME%';" ^
       "$lines += 'JoinServerOnLaunch=false';" ^
       "$lines += 'JoinServerOnLaunchAddress=';" ^
       "$lines += 'JoinWorldOnLaunch=';" ^
@@ -256,26 +256,6 @@ if exist "%TEST_WORLD%\level.dat" (
     echo You can close the game and use test.bat again for later launches.
     echo ========================================
     echo.
-)
-
-if not exist "%TEST_WORLD%\level.dat" (
-    echo.
-    echo ========================================
-    echo FIRST RUN
-    echo ========================================
-    echo Test world "%WORLD_NAME%" does not exist yet.
-    echo Launching the isolated instance now.
-    echo.
-    echo In Minecraft:
-    echo 1. Create a Creative world named "%WORLD_NAME%".
-    echo 2. Enter the world.
-    echo 3. The test lab will be built automatically.
-    echo.
-    echo You can close the game and use test.bat again for later launches.
-    echo ========================================
-    echo.
-) else (
-    echo Test world found: %WORLD_NAME%
 )
 
 echo.
