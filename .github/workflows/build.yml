@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - gui-redesign
+      - feature/color-xray
   pull_request:
   workflow_dispatch:
 
