@@ -13,17 +13,12 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(RenderChunkRegion.class)
 public abstract class MixinRenderChunkRegion {
-
-    /*
-     * RenderChunkRegion уже получил настоящий BlockState к моменту RETURN.
-     * Поэтому здесь безопасно заменять скрываемые блоки на воздух.
-     */
     @Inject(method = "getBlockState", at = @At("RETURN"), cancellable = true)
     private void xtoxray$filter(BlockPos pos, CallbackInfoReturnable<BlockState> callback) {
         BlockState state = callback.getReturnValue();
         XrayState xray = XrayState.getInstance();
 
-        if (!xray.isActive() || state == null || state.isAir()) {
+        if (!xray.isBlockFilterActive() || state == null || state.isAir()) {
             return;
         }
 

@@ -208,6 +208,18 @@ public final class XrayState {
         setActive(!active);
     }
 
+    public boolean isNormalXrayActive() {
+        return active && !colorMode;
+    }
+
+    public boolean isColorXrayActive() {
+        return active && colorMode;
+    }
+
+    public boolean isBlockFilterActive() {
+        return active && (!colorMode || !colorShowNormalBlocks);
+    }
+
     public boolean shouldRender(BlockState state) {
         return xrayWhitelist.contains(state.getBlock());
     }
@@ -429,8 +441,6 @@ public final class XrayState {
         List<String> xrayWhitelist;
         List<String> veinMinerWhitelist;
         Map<String, Integer> blockColors;
-
-        // Поле оставлено только для чтения старых конфигов.
         List<String> whitelist;
     }
 }

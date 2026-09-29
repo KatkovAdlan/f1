@@ -14,7 +14,6 @@ public final class ClientModEvents {
         e.register(XrayClient.TOGGLE_KEY.get());
         e.register(XrayClient.VEIN_MINER_KEY.get());
         e.register(XrayClient.OPEN_MENU_KEY.get());
-        e.register(XrayClient.COLOR_MODE_KEY.get());
     }
 
     @SubscribeEvent public static void registerRenderBuffers(RegisterRenderBuffersEvent e){

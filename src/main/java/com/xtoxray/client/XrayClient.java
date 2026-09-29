@@ -17,7 +17,7 @@ import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
 import net.neoforged.neoforge.client.event.RenderLivingEvent;
 import net.neoforged.neoforge.client.event.ScreenEvent;
-import net.neoforged.neoforge.common.util.Lazy;
+import net.neoforged.fml.common.util.Lazy;
 import org.lwjgl.glfw.GLFW;
 
 @EventBusSubscriber(modid=XtoXray.MOD_ID,value=net.neoforged.api.distmarker.Dist.CLIENT)
@@ -25,7 +25,6 @@ public final class XrayClient {
     public static final Lazy<KeyMapping> TOGGLE_KEY=Lazy.of(()->new KeyMapping("key.xtoxray.toggle",InputConstants.Type.KEYSYM,GLFW.GLFW_KEY_X,"key.categories.xtoxray"));
     public static final Lazy<KeyMapping> VEIN_MINER_KEY=Lazy.of(()->new KeyMapping("key.xtoxray.vein_miner",InputConstants.Type.KEYSYM,GLFW.GLFW_KEY_V,"key.categories.xtoxray"));
     public static final Lazy<KeyMapping> OPEN_MENU_KEY=Lazy.of(()->new KeyMapping("key.xtoxray.open_config",InputConstants.Type.KEYSYM,GLFW.GLFW_KEY_RIGHT_SHIFT,"key.categories.xtoxray"));
-    public static final Lazy<KeyMapping> COLOR_MODE_KEY=Lazy.of(()->new KeyMapping("key.xtoxray.color_mode",InputConstants.Type.KEYSYM,GLFW.GLFW_KEY_C,"key.categories.xtoxray"));
     private static long lastX=Long.MIN_VALUE,lastZ=Long.MIN_VALUE; private static int lastY=Integer.MIN_VALUE;
     private static boolean hasRenderCenter=false;
     private XrayClient(){}
@@ -34,12 +33,11 @@ public final class XrayClient {
         while(OPEN_MENU_KEY.get().consumeClick())if(mc.level!=null&&mc.player!=null&&mc.screen==null)mc.setScreen(new XrayConfigScreen(null));
         while(TOGGLE_KEY.get().consumeClick())if(mc.level!=null&&mc.player!=null&&mc.screen==null)toggleXray(mc);
         while(VEIN_MINER_KEY.get().consumeClick())if(mc.level!=null&&mc.player!=null&&mc.screen==null)toggleVeinMiner(mc);
-        while(COLOR_MODE_KEY.get().consumeClick())if(mc.level!=null&&mc.player!=null&&mc.screen==null)toggleColorMode();
         if(mc.level!=null&&mc.player!=null){
             XrayState state=XrayState.getInstance();
             BlockPos pos=mc.player.blockPosition();
 
-            if(state.isActive() && hasRenderCenter){
+            if(state.isBlockFilterActive() && hasRenderCenter){
                 int oldCenterX=state.getRenderCenterX();
                 int oldCenterY=state.getRenderCenterY();
                 int oldCenterZ=state.getRenderCenterZ();
@@ -69,31 +67,52 @@ public final class XrayClient {
 
     public static void toggleXrayFromGui(Minecraft mc){if(mc.player!=null&&mc.level!=null)toggleXray(mc);}
     public static void toggleVeinMinerFromGui(Minecraft mc){if(mc.player!=null&&mc.level!=null)toggleVeinMiner(mc);}
-    public static void toggleColorModeFromGui(){toggleColorMode();}
-
-    private static void toggleXray(Minecraft mc){
-        XrayState s=XrayState.getInstance();s.toggle();LocalPlayer p=mc.player;
-        hasRenderCenter=false;
-        if(s.isActive()){p.addEffect(new net.minecraft.world.effect.MobEffectInstance(net.minecraft.world.effect.MobEffects.NIGHT_VISION,-1,0,false,false,false));p.displayClientMessage(Component.translatable("message.xtoxray.xray_on"),true);}
-        else{p.removeEffect(net.minecraft.world.effect.MobEffects.NIGHT_VISION);p.displayClientMessage(Component.translatable("message.xtoxray.xray_off"),true);}
-        lastX=Long.MIN_VALUE;lastY=Integer.MIN_VALUE;lastZ=Long.MIN_VALUE;rebuildAll(mc);
-    }
-
-    private static void toggleColorMode(){
+    public static void toggleColorModeFromGui(){
         XrayState state=XrayState.getInstance();
         state.toggleColorMode();
+        refreshDisplay(Minecraft.getInstance());
+    }
+
+    private static void toggleXray(Minecraft mc){
+        XrayState s=XrayState.getInstance();
+        s.toggle();
+        hasRenderCenter=false;
+        refreshDisplay(mc);
+
+        if (mc.player != null) {
+            mc.player.displayClientMessage(
+                    Component.literal(s.isActive()
+                            ? (s.isColorMode() ? "Цветовой режим включён" : "Рентген включён")
+                            : "Режим отображения выключен"),
+                    true);
+        }
+    }
+
+    public static void refreshDisplay(Minecraft mc){
+        XrayState state=XrayState.getInstance();
+        LocalPlayer player=mc.player;
+        if(player!=null){
+            if(state.isBlockFilterActive()){
+                player.addEffect(new net.minecraft.world.effect.MobEffectInstance(
+                        net.minecraft.world.effect.MobEffects.NIGHT_VISION,
+                        -1,0,false,false,false));
+            }else{
+                player.removeEffect(net.minecraft.world.effect.MobEffects.NIGHT_VISION);
+            }
+        }
+
         ColorXrayRenderer.requestFullRescan();
-        Minecraft.getInstance().levelRenderer.allChanged();
-        Minecraft.getInstance().player.displayClientMessage(
-                Component.literal(state.isColorMode() ? "Цветовой X-Ray: ВКЛ" : "Цветовой X-Ray: ВЫКЛ"),
-                true);
+        rebuildAll(mc);
+        lastX=Long.MIN_VALUE;
+        lastY=Integer.MIN_VALUE;
+        lastZ=Long.MIN_VALUE;
     }
 
     private static void toggleVeinMiner(Minecraft mc){XrayState s=XrayState.getInstance();s.setVeinMiner(!s.isVeinMiner());mc.player.displayClientMessage(s.isVeinMiner() ? Component.translatable("message.xtoxray.vein_on") : Component.translatable("message.xtoxray.vein_off"),true);}
 
     @SubscribeEvent
     public static void hideMobs(RenderLivingEvent.Pre<?, ?> event) {
-        if (XrayState.getInstance().isActive() && event.getEntity() instanceof Mob) {
+        if (XrayState.getInstance().isBlockFilterActive() && event.getEntity() instanceof Mob) {
             event.setCanceled(true);
         }
     }

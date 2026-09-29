@@ -13,15 +13,8 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import java.util.function.Predicate;
 
-/**
- * Скрываем весь обычный рендер частиц во время X-Ray.
- *
- * Сами частицы продолжают обновляться, поэтому включение/выключение
- * X-Ray не меняет игровую логику, а только их отображение.
- */
 @Mixin(ParticleEngine.class)
 public abstract class MixinParticleEngine {
-
     @Inject(
         method = "render(Lnet/minecraft/client/renderer/LightTexture;Lnet/minecraft/client/Camera;FLnet/minecraft/client/renderer/culling/Frustum;Ljava/util/function/Predicate;)V",
         at = @At("HEAD"),
@@ -35,7 +28,7 @@ public abstract class MixinParticleEngine {
             Predicate<ParticleRenderType> renderTypePredicate,
             CallbackInfo ci
     ) {
-        if (XrayState.getInstance().isActive()) {
+        if (XrayState.getInstance().isBlockFilterActive()) {
             ci.cancel();
         }
     }
