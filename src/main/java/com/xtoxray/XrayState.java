@@ -34,7 +34,7 @@ public final class XrayState {
     private int veinMinerDurabilityPerBlock = 1;
 
     private boolean colorMode;
-    private boolean colorShowNormalBlocks = true;
+    private boolean colorShowNormalBlocks = false;
     private boolean colorOutline = true;
     private boolean colorFill = false;
     private int colorOpacity = 180;
@@ -166,7 +166,7 @@ public final class XrayState {
         veinMiner = false;
         veinMinerDurabilityPerBlock = 1;
         colorMode = false;
-        colorShowNormalBlocks = true;
+        colorShowNormalBlocks = false;
         colorOutline = true;
         colorFill = false;
         colorOpacity = 180;
