@@ -8,19 +8,11 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-/**
- * Совместимость с Sodium 0.8.13 для Minecraft 1.21.1.
- *
- * Фильтруем LevelSlice на самом уровне getBlockState(), а не только
- * прямой вызов из ChunkBuilderMeshingTask. Поэтому Sodium использует
- * отфильтрованное состояние и для соседей при расчёте видимых граней.
- */
 @Mixin(
     targets = "net.caffeinemc.mods.sodium.client.world.LevelSlice",
     remap = false
 )
 public abstract class MixinSodiumChunkBuilderMeshingTask {
-
     @Inject(
         method = "getBlockState(III)Lnet/minecraft/world/level/block/state/BlockState;",
         at = @At("RETURN"),
@@ -34,7 +26,7 @@ public abstract class MixinSodiumChunkBuilderMeshingTask {
             CallbackInfoReturnable<BlockState> cir
     ) {
         XrayState xray = XrayState.getInstance();
-        if (!xray.isActive()) {
+        if (!xray.isBlockFilterActive()) {
             return;
         }
 

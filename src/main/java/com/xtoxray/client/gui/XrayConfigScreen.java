@@ -2,7 +2,9 @@ package com.xtoxray.client.gui;
 
 import com.mojang.blaze3d.platform.InputConstants;
 import com.xtoxray.XrayState;
+import com.xtoxray.XtoXray;
 import com.xtoxray.client.XrayClient;
+import com.xtoxray.client.ColorXrayRenderer;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
@@ -45,9 +47,37 @@ public final class XrayConfigScreen extends Screen {
 
         int x = contentLeft(), w = Math.min(258, contentWidth());
         if (page == Page.XRAY) {
-            addRenderableWidget(new DistanceSlider(x, top + 49, w, 25, state.getOreRenderDistance()));
-            addWhitelistSearch(x, top + 82, w);
+            addRenderableWidget(Button.builder(
+                    Component.literal("Рентген: " + (state.isActive() ? "ВКЛ" : "ВЫКЛ")),
+                    btn -> {
+                        XrayClient.toggleXrayFromGui(Minecraft.getInstance());
+                        init();
+                    }
+            ).bounds(x, top + 49, w, 25).build());
+
+            addRenderableWidget(Button.builder(
+                    Component.literal("Режим: " + (state.isColorMode() ? "Цветовое выделение" : "Обычный X-Ray")),
+                    btn -> {
+                        XrayClient.toggleColorModeFromGui();
+                        init();
+                    }
+            ).bounds(x, top + 78, w, 25).build());
+
+            if (state.isColorMode()) {
+                addRenderableWidget(Button.builder(
+                        Component.literal("Обычные блоки: " + (state.isColorShowNormalBlocks() ? "ВИДИМЫ" : "СКРЫТЫ")),
+                        btn -> {
+                            state.setColorShowNormalBlocks(!state.isColorShowNormalBlocks());
+                            XrayClient.refreshDisplay(Minecraft.getInstance());
+                            init();
+                        }
+                ).bounds(x, top + 107, w, 25).build());
+            }
+
+            addRenderableWidget(new DistanceSlider(x, top + 140, w, 25, state.getOreRenderDistance()));
+            addWhitelistSearch(x, top + 172, w);
         }
+
         if (page == Page.VEIN) {
             addRenderableWidget(new DurabilitySlider(x, top + 87, w, 25, state.getVeinMinerDurabilityPerBlock()));
             addWhitelistSearch(x, top + 119, w);
@@ -82,13 +112,9 @@ public final class XrayConfigScreen extends Screen {
     }
 
     @Override public void renderBackground(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
-        // Vanilla Screen.renderBackground запускает GameRenderer.renderBlur().
-        // Здесь фон рисуется самим экраном, поэтому blur полностью отсутствует.
     }
 
     @Override public void render(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
-        // Намеренно не вызываем renderBackground/renderBlurredBackground:
-        // фон меню XtoXray должен оставаться резким.
         g.fill(0, 0, width, height, 0x66000000);
         panelW = Math.min(PANEL_W, width - 12); panelH = Math.min(PANEL_H, height - 12);
         left = (width - panelW) / 2; top = Math.max(6, (height - panelH) / 2);
@@ -114,7 +140,7 @@ public final class XrayConfigScreen extends Screen {
 
     private void drawHeader(GuiGraphics g) {
         g.drawString(font, Component.literal("XtoXray"), left+12, top+12, 0xFFFFFFFF, false);
-        String version="Порт NeoForge 1.0.0-neoforge.13";
+        String version="Порт NeoForge "+XtoXray.getModVersion();
         g.drawString(font, Component.literal(version), left+panelW-font.width(version)-12, top+12, 0xFF4EE0B3, false);
     }
 
@@ -166,11 +192,17 @@ public final class XrayConfigScreen extends Screen {
     }
 
     private void drawXray(GuiGraphics g,int mx,int my) {
-        int x=contentLeft(), y=top+HEADER_H+112;
+        int x=contentLeft();
+        int y=top+HEADER_H+(state.isColorMode()?286:168);
         g.drawString(font,Component.literal("Белый список"),x,y+1,0xFFFFFFFF,false);
         String count = getFilteredWhitelist().size() + " из " + getWhitelistSize();
         g.drawString(font,Component.literal(count),x+contentWidth()-font.width(count),y+1,0xFF888888,false);
-        drawWhitelist(g,x,y+17,mx,my);
+        if (state.isColorMode()) {
+            g.drawString(font,Component.literal("Shift+ЛКМ по блоку: изменить цвет"),x,y+16,0xFF777777,false);
+            drawWhitelist(g,x,y+31,mx,my);
+        } else {
+            drawWhitelist(g,x,y+17,mx,my);
+        }
     }
 
     private void drawVein(GuiGraphics g,int mx,int my) {
@@ -184,7 +216,9 @@ public final class XrayConfigScreen extends Screen {
 
     private void drawWhitelist(GuiGraphics g,int x,int y,int mx,int my) {
         List<Block> blocks=getFilteredWhitelist();
-        int cell=26,gap=3,cols=Math.max(1,Math.min(15,contentWidth()/29)),max=cols*6-1;
+        int cell=26,gap=3,cols=Math.max(1,Math.min(15,contentWidth()/29));
+        int rows=(page==Page.XRAY && state.isColorMode()) ? 4 : 6;
+        int max=cols*rows-1;
         int shown=Math.min(blocks.size(),max);
         for(int i=0;i<shown;i++) drawBlockCell(g,blocks.get(i),x+(i%cols)*(cell+gap),y+(i/cols)*(cell+gap),mx,my);
         int ai=shown, ax=x+(ai%cols)*(cell+gap), ay=y+(ai/cols)*(cell+gap);
@@ -202,6 +236,10 @@ public final class XrayConfigScreen extends Screen {
         g.vLine(x,y,y+26,0xFF414141); g.vLine(x+26,y,y+26,0xFF101010);
         ItemStack s=block.asItem().getDefaultInstance();
         if(!s.isEmpty()){ g.renderItem(s,x+5,y+5); if(h) g.renderTooltip(font,s,mx,my); }
+        if (state.isColorMode()) {
+            int color = 0xFF000000 | state.getBlockColor(block);
+            g.fill(x + 2, y + 22, x + 24, y + 24, color);
+        }
         if(h) g.drawString(font,"×",x+18,y+1,0xFFFFFFFF,false);
     }
 
@@ -231,16 +269,28 @@ public final class XrayConfigScreen extends Screen {
     @Override public boolean mouseClicked(double mx,double my,int button){
         if(clickNav(mx,my)) return true;
         if((page==Page.XRAY||page==Page.VEIN)){
-            int x=contentLeft(), y=page==Page.XRAY?top+HEADER_H+129:top+164;
-            int cell=26,gap=3,cols=Math.max(1,Math.min(15,contentWidth()/29)),max=cols*6-1;
+            int x=contentLeft(), y=page==Page.XRAY
+                ? top+HEADER_H+(state.isColorMode()?303:185)
+                : top+164;
+            int cell=26,gap=3,cols=Math.max(1,Math.min(15,contentWidth()/29));
+            int rows=(page==Page.XRAY && state.isColorMode()) ? 4 : 6;
+            int max=cols*rows-1;
             List<Block> blocks=getFilteredWhitelist();
             for(int i=0;i<Math.min(blocks.size(),max);i++){
                 int bx=x+(i%cols)*(cell+gap), by=y+(i/cols)*(cell+gap);
                 if(mx>=bx&&mx<bx+cell&&my>=by&&my<by+cell){
+                    if (page == Page.XRAY
+                            && state.isColorMode()
+                            && button == org.lwjgl.glfw.GLFW.GLFW_MOUSE_BUTTON_1
+                            && isShiftHeld()) {
+                        Minecraft.getInstance().setScreen(new XrayColorPickerScreen(this, blocks.get(i)));
+                        return true;
+                    }
                     if (page == Page.VEIN) {
                         state.removeVeinMinerBlock(blocks.get(i));
                     } else {
                         state.removeXrayBlock(blocks.get(i));
+                        XrayClient.refreshDisplay(Minecraft.getInstance());
                     }
                     return true;
                 }
@@ -256,6 +306,12 @@ public final class XrayConfigScreen extends Screen {
             }
         }
         return super.mouseClicked(mx,my,button);
+    }
+
+    private boolean isShiftHeld() {
+        long handle = Minecraft.getInstance().getWindow().getWindow();
+        return org.lwjgl.glfw.GLFW.glfwGetKey(handle, org.lwjgl.glfw.GLFW.GLFW_KEY_LEFT_SHIFT) == org.lwjgl.glfw.GLFW.GLFW_PRESS
+                || org.lwjgl.glfw.GLFW.glfwGetKey(handle, org.lwjgl.glfw.GLFW.GLFW_KEY_RIGHT_SHIFT) == org.lwjgl.glfw.GLFW.GLFW_PRESS;
     }
 
     @Override public boolean keyPressed(int keyCode,int scanCode,int modifiers){
@@ -290,8 +346,23 @@ public final class XrayConfigScreen extends Screen {
     private static final class DistanceSlider extends AbstractSliderButton {
         DistanceSlider(int x,int y,int w,int h,int d){super(x,y,w,h,Component.empty(),(d-32)/480.0D);updateMessage();}
         protected void updateMessage(){int d=32+(int)Math.round(value*480.0D);setMessage(Component.literal("Дальность: "+d+" блоков"));}
-        protected void applyValue(){int d=32+(int)Math.round(value*480.0D);XrayState.getInstance().setOreRenderDistance(d);XrayClient.rebuildAll(Minecraft.getInstance());}
+        protected void applyValue(){int d=32+(int)Math.round(value*480.0D);XrayState.getInstance().setOreRenderDistance(d);XrayClient.refreshDisplay(Minecraft.getInstance());}
     }
+    private static final class ColorOpacitySlider extends AbstractSliderButton {
+        ColorOpacitySlider(int x,int y,int w,int h,int opacity){
+            super(x,y,w,h,Component.empty(),(opacity-1)/254.0D);
+            updateMessage();
+        }
+        protected void updateMessage(){
+            int opacity=1+(int)Math.round(value*254.0D);
+            setMessage(Component.literal("Прозрачность: "+opacity));
+        }
+        protected void applyValue(){
+            int opacity=1+(int)Math.round(value*254.0D);
+            XrayState.getInstance().setColorOpacity(opacity);
+        }
+    }
+
     private static final class DurabilitySlider extends AbstractSliderButton {
         DurabilitySlider(int x,int y,int w,int h,int v){super(x,y,w,h,Component.empty(),(v-1)/9.0D);updateMessage();}
         protected void updateMessage(){int v=1+(int)Math.round(value*9.0D);setMessage(Component.literal("Прочность на блок: "+v));}

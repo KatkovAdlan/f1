@@ -16,22 +16,32 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 public final class XrayState {
     private static final XrayState INSTANCE = new XrayState();
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     private static final Path CONFIG_PATH = Path.of("config", "xtoxray.json");
+    private static final int DEFAULT_COLOR = 0x00E5FF;
 
     private boolean active;
     private boolean veinMiner;
     private int oreRenderDistance = 128;
     private int veinMinerDurabilityPerBlock = 1;
 
+    private boolean colorMode;
+    private boolean colorShowNormalBlocks = false;
+    private boolean colorOutline = true;
+    private boolean colorFill = false;
+    private int colorOpacity = 180;
+
     private final Set<Block> xrayWhitelist = new LinkedHashSet<>();
     private final Set<Block> veinMinerWhitelist = new LinkedHashSet<>();
+    private final Map<String, Integer> blockColors = new LinkedHashMap<>();
 
     private volatile int renderCenterX;
     private volatile int renderCenterY;
@@ -63,14 +73,28 @@ public final class XrayState {
                 oreRenderDistance = clamp(data.oreRenderDistance, 32, 512);
                 veinMiner = data.veinMiner;
                 veinMinerDurabilityPerBlock = clamp(data.veinMinerDurabilityPerBlock, 1, 10);
+                colorMode = data.colorMode;
+                colorShowNormalBlocks = data.colorShowNormalBlocks;
+                colorOutline = data.colorOutline;
+                colorFill = data.colorFill;
+                colorOpacity = clamp(data.colorOpacity, 1, 255);
 
                 xrayWhitelist.clear();
                 veinMinerWhitelist.clear();
+                blockColors.clear();
 
-                // Поддерживаем старый конфиг, где был один общий список.
                 List<String> legacy = data.whitelist;
                 loadBlocks(xrayWhitelist, data.xrayWhitelist != null ? data.xrayWhitelist : legacy);
                 loadBlocks(veinMinerWhitelist, data.veinMinerWhitelist != null ? data.veinMinerWhitelist : legacy);
+                if (data.blockColors != null) {
+                    for (Map.Entry<String, Integer> entry : data.blockColors.entrySet()) {
+                        ResourceLocation location = ResourceLocation.tryParse(entry.getKey());
+                        Integer color = entry.getValue();
+                        if (location != null && color != null) {
+                            blockColors.put(location.toString(), color & 0xFFFFFF);
+                        }
+                    }
+                }
 
                 if (xrayWhitelist.isEmpty() && data.xrayWhitelist == null && legacy == null) {
                     addDefaultBlocks(xrayWhitelist);
@@ -105,8 +129,14 @@ public final class XrayState {
             data.oreRenderDistance = oreRenderDistance;
             data.veinMiner = veinMiner;
             data.veinMinerDurabilityPerBlock = veinMinerDurabilityPerBlock;
+            data.colorMode = colorMode;
+            data.colorShowNormalBlocks = colorShowNormalBlocks;
+            data.colorOutline = colorOutline;
+            data.colorFill = colorFill;
+            data.colorOpacity = colorOpacity;
             data.xrayWhitelist = toIds(xrayWhitelist);
             data.veinMinerWhitelist = toIds(veinMinerWhitelist);
+            data.blockColors = new LinkedHashMap<>(blockColors);
 
             try (Writer writer = Files.newBufferedWriter(CONFIG_PATH)) {
                 GSON.toJson(data, writer);
@@ -129,11 +159,17 @@ public final class XrayState {
     public void resetDefaults() {
         xrayWhitelist.clear();
         veinMinerWhitelist.clear();
+        blockColors.clear();
         addDefaultBlocks(xrayWhitelist);
         addDefaultBlocks(veinMinerWhitelist);
         oreRenderDistance = 128;
         veinMiner = false;
         veinMinerDurabilityPerBlock = 1;
+        colorMode = false;
+        colorShowNormalBlocks = false;
+        colorOutline = true;
+        colorFill = false;
+        colorOpacity = 180;
         save();
     }
 
@@ -170,6 +206,18 @@ public final class XrayState {
 
     public void toggle() {
         setActive(!active);
+    }
+
+    public boolean isNormalXrayActive() {
+        return active && !colorMode;
+    }
+
+    public boolean isColorXrayActive() {
+        return active && colorMode;
+    }
+
+    public boolean isBlockFilterActive() {
+        return active && (!colorMode || !colorShowNormalBlocks);
     }
 
     public boolean shouldRender(BlockState state) {
@@ -294,6 +342,89 @@ public final class XrayState {
         save();
     }
 
+    public boolean isColorMode() {
+        return colorMode;
+    }
+
+    public void setColorMode(boolean colorMode) {
+        this.colorMode = colorMode;
+        save();
+    }
+
+    public void toggleColorMode() {
+        setColorMode(!colorMode);
+    }
+
+    public boolean isColorShowNormalBlocks() {
+        return colorShowNormalBlocks;
+    }
+
+    public void setColorShowNormalBlocks(boolean value) {
+        colorShowNormalBlocks = value;
+        save();
+    }
+
+    public boolean isColorOutline() {
+        return colorOutline;
+    }
+
+    public void setColorOutline(boolean value) {
+        colorOutline = value;
+        save();
+    }
+
+    public boolean isColorFill() {
+        return colorFill;
+    }
+
+    public void setColorFill(boolean value) {
+        colorFill = value;
+        save();
+    }
+
+    public int getColorOpacity() {
+        return colorOpacity;
+    }
+
+    public void setColorOpacity(int value) {
+        colorOpacity = clamp(value, 1, 255);
+        save();
+    }
+
+    public int getBlockColor(Block block) {
+        if (block == null) {
+            return DEFAULT_COLOR;
+        }
+        ResourceLocation id = BuiltInRegistries.BLOCK.getKey(block);
+        if (id == null) {
+            return DEFAULT_COLOR;
+        }
+        return blockColors.getOrDefault(id.toString(), DEFAULT_COLOR);
+    }
+
+    public boolean hasCustomBlockColor(Block block) {
+        ResourceLocation id = BuiltInRegistries.BLOCK.getKey(block);
+        return id != null && blockColors.containsKey(id.toString());
+    }
+
+    public void setBlockColor(Block block, int rgb) {
+        if (block == null || block == Blocks.AIR) {
+            return;
+        }
+        ResourceLocation id = BuiltInRegistries.BLOCK.getKey(block);
+        if (id != null) {
+            blockColors.put(id.toString(), rgb & 0xFFFFFF);
+            save();
+        }
+    }
+
+    public void resetBlockColor(Block block) {
+        ResourceLocation id = BuiltInRegistries.BLOCK.getKey(block);
+        if (id != null && blockColors.remove(id.toString()) != null) {
+            save();
+        }
+    }
+
     private static int clamp(int value, int min, int max) {
         return Math.max(min, Math.min(value, max));
     }
@@ -302,10 +433,14 @@ public final class XrayState {
         int oreRenderDistance = 128;
         boolean veinMiner;
         int veinMinerDurabilityPerBlock = 1;
+        boolean colorMode;
+        boolean colorShowNormalBlocks = true;
+        boolean colorOutline = true;
+        boolean colorFill;
+        int colorOpacity = 180;
         List<String> xrayWhitelist;
         List<String> veinMinerWhitelist;
-
-        // Поле оставлено только для чтения старых конфигов.
+        Map<String, Integer> blockColors;
         List<String> whitelist;
     }
 }
