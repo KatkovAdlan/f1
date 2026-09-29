@@ -282,7 +282,7 @@ public final class XrayConfigScreen extends Screen {
                     if (page == Page.XRAY
                             && state.isColorMode()
                             && button == org.lwjgl.glfw.GLFW.GLFW_MOUSE_BUTTON_1
-                            && hasShiftDown()) {
+                            && isShiftHeld()) {
                         Minecraft.getInstance().setScreen(new XrayColorPickerScreen(this, blocks.get(i)));
                         return true;
                     }
@@ -308,7 +308,7 @@ public final class XrayConfigScreen extends Screen {
         return super.mouseClicked(mx,my,button);
     }
 
-    private boolean hasShiftDown() {
+    private boolean isShiftHeld() {
         long handle = Minecraft.getInstance().getWindow().getWindow();
         return org.lwjgl.glfw.GLFW.glfwGetKey(handle, org.lwjgl.glfw.GLFW.GLFW_KEY_LEFT_SHIFT) == org.lwjgl.glfw.GLFW.GLFW_PRESS
                 || org.lwjgl.glfw.GLFW.glfwGetKey(handle, org.lwjgl.glfw.GLFW.GLFW_KEY_RIGHT_SHIFT) == org.lwjgl.glfw.GLFW.GLFW_PRESS;
