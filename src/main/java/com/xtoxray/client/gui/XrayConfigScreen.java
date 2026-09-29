@@ -216,7 +216,9 @@ public final class XrayConfigScreen extends Screen {
 
     private void drawWhitelist(GuiGraphics g,int x,int y,int mx,int my) {
         List<Block> blocks=getFilteredWhitelist();
-        int cell=26,gap=3,cols=Math.max(1,Math.min(15,contentWidth()/29)),max=cols*6-1;
+        int cell=26,gap=3,cols=Math.max(1,Math.min(15,contentWidth()/29));
+        int rows=(page==Page.XRAY && state.isColorMode()) ? 4 : 6;
+        int max=cols*rows-1;
         int shown=Math.min(blocks.size(),max);
         for(int i=0;i<shown;i++) drawBlockCell(g,blocks.get(i),x+(i%cols)*(cell+gap),y+(i/cols)*(cell+gap),mx,my);
         int ai=shown, ax=x+(ai%cols)*(cell+gap), ay=y+(ai/cols)*(cell+gap);
