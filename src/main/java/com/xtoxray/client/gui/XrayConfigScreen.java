@@ -272,7 +272,9 @@ public final class XrayConfigScreen extends Screen {
             int x=contentLeft(), y=page==Page.XRAY
                 ? top+HEADER_H+(state.isColorMode()?303:185)
                 : top+164;
-            int cell=26,gap=3,cols=Math.max(1,Math.min(15,contentWidth()/29)),max=cols*6-1;
+            int cell=26,gap=3,cols=Math.max(1,Math.min(15,contentWidth()/29));
+            int rows=(page==Page.XRAY && state.isColorMode()) ? 4 : 6;
+            int max=cols*rows-1;
             List<Block> blocks=getFilteredWhitelist();
             for(int i=0;i<Math.min(blocks.size(),max);i++){
                 int bx=x+(i%cols)*(cell+gap), by=y+(i/cols)*(cell+gap);
