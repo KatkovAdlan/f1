@@ -229,6 +229,10 @@ public final class ColorXrayRenderer {
         }
 
         PoseStack poseStack = event.getPoseStack();
+        var cameraPos = event.getCamera().getPosition();
+        poseStack.pushPose();
+        poseStack.translate(-cameraPos.x, -cameraPos.y, -cameraPos.z);
+
         MultiBufferSource.BufferSource buffers = Minecraft.getInstance().renderBuffers().bufferSource();
         int alpha = state.getColorOpacity();
 
@@ -251,6 +255,8 @@ public final class ColorXrayRenderer {
             }
             buffers.endBatch(COLOR_FILL);
         }
+
+        poseStack.popPose();
     }
 
     private static void drawOutline(PoseStack poseStack, VertexConsumer consumer, long packedPos, int rgb, int alpha) {
