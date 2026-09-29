@@ -83,7 +83,7 @@ public final class ColorXrayRenderer {
     public static void tick(Minecraft mc) {
         XrayState state = XrayState.getInstance();
 
-        if (mc.level == null || mc.player == null || !state.isColorMode()) {
+        if (mc.level == null || mc.player == null || !state.isColorXrayActive()) {
             clearWhenInactive();
             return;
         }
@@ -224,7 +224,7 @@ public final class ColorXrayRenderer {
         }
 
         XrayState state = XrayState.getInstance();
-        if (!state.isColorMode() || Minecraft.getInstance().player == null) {
+        if (!state.isColorXrayActive() || Minecraft.getInstance().player == null) {
             return;
         }
 
